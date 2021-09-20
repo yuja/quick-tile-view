@@ -16,6 +16,8 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick REQUIRED)
 
 set(PROJECT_SOURCES
     src/main.cpp
+    src/tilegenerator.cpp
+    src/tilegenerator.h
     qml.qrc
 )
 
@@ -24,6 +26,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
+    # TODO: clean up qml type structure
+    qt_add_qml_module(quick-tile-view URI MyTile VERSION 1.0)
 else()
     add_executable(quick-tile-view
         ${PROJECT_SOURCES}
@@ -32,6 +36,8 @@ endif()
 
 target_compile_definitions(quick-tile-view
     PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
+target_include_directories(quick-tile-view
+    PRIVATE src)
 target_link_libraries(quick-tile-view
     PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick)
 
