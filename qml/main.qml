@@ -26,6 +26,7 @@ Window {
                 id: tile
 
                 readonly property bool highlighted: TileGenerator.index === root.currentTileIndex
+                readonly property bool occupied: children.length > 1
 
                 // TODO
                 border.color: highlighted ? "cyan" : "lightgray"
@@ -59,7 +60,7 @@ Window {
                         Layout.preferredWidth: 80
                         editable: true
                         from: 0
-                        to: 100  // TODO
+                        to: tileGenerator.count - 1
                     }
                 }
 
@@ -76,6 +77,46 @@ Window {
                         tileGenerator.split(tileIndexSpinBox.value, Qt.Vertical);
                     }
                 }
+
+                Button {
+                    text: "Add Frame"
+                    onClicked: {
+                        dummyFrameListModel.append({
+                            name: "Frame %1".arg(dummyFrameListModel.count)});
+                    }
+                }
+            }
+        }
+    }
+
+    Repeater {
+        model: ListModel {
+            id: dummyFrameListModel
+        }
+
+        onItemAdded: function(index, item) {
+            for (let i = 0; i < tileGenerator.count; ++i) {
+                let t = tileGenerator.itemAt(i);
+                if (t.occupied)
+                    continue;
+                item.parent = t;
+                item.visible = true;
+                break;
+            }
+        }
+
+        Rectangle {
+            id: frame
+
+            required property string name
+
+            anchors.fill: parent
+            color: "#400000ff"
+            visible: false
+
+            Label {
+                anchors.centerIn: parent
+                text: frame.name
             }
         }
     }

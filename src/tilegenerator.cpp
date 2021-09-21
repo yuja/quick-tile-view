@@ -79,6 +79,21 @@ auto TileGenerator::createTile() -> Tile
     }
 }
 
+int TileGenerator::count() const
+{
+    return static_cast<int>(tiles_.size());
+}
+
+QQuickItem *TileGenerator::itemAt(int tileIndex) const
+{
+    if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
+        qmlWarning(this) << "tile index out of range:" << tileIndex;
+        return nullptr;
+    }
+
+    return tiles_.at(static_cast<size_t>(tileIndex)).item.get();
+}
+
 void TileGenerator::split(int tileIndex, Qt::Orientation orientation)
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
@@ -122,6 +137,7 @@ void TileGenerator::split(int tileIndex, Qt::Orientation orientation)
     }
 
     resizeTiles(0, QRectF(QPointF(0.0, 0.0), size()), 0); // TODO: optimize
+    emit countChanged();
 }
 
 void TileGenerator::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)

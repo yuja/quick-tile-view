@@ -15,6 +15,7 @@ class TileGenerator : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QQmlComponent *tile READ tile WRITE setTile NOTIFY tileChanged FINAL)
+    Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
     QML_ATTACHED(TileGeneratorAttached)
     QML_ELEMENT
 
@@ -27,6 +28,9 @@ public:
     QQmlComponent *tile() { return tileComponent_; }
     void setTile(QQmlComponent *tile);
 
+    int count() const;
+    Q_INVOKABLE QQuickItem *itemAt(int tileIndex) const;
+
     Q_INVOKABLE void split(int tileIndex, Qt::Orientation orientation);
 
 protected:
@@ -34,6 +38,7 @@ protected:
 
 signals:
     void tileChanged();
+    void countChanged();
 
 private:
     struct Tile
