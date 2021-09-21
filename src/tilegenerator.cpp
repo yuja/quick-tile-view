@@ -1,5 +1,6 @@
 #include <QPointF>
 #include <QtQml>
+#include <algorithm>
 #include "tilegenerator.h"
 
 namespace {
@@ -60,6 +61,46 @@ auto TileGenerator::createTile() -> Tile
         delete obj;
         return {};
     }
+}
+
+void TileGenerator::split(int tileIndex, Qt::Orientation orientation)
+{
+    if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
+        qmlWarning(this) << "tile index out of range:" << tileIndex;
+        return;
+    }
+
+    // Insert new tile and adjust indices.
+    tiles_.insert(tiles_.begin() + tileIndex + 1, createTile());
+    for (auto &split : splitMap_) {
+        for (auto &b : split.bands) {
+            if (b.index <= tileIndex)
+                continue;
+            b.index += 1;
+        }
+    }
+
+    // Allocate band for the new tile.
+    for (auto &split : splitMap_) {
+        const auto p = std::find_if(split.bands.begin(), split.bands.end(),
+                                    [tileIndex](const auto &b) { return b.index == tileIndex; });
+        if (p == split.bands.end())
+            continue;
+        if (split.orientation == orientation || split.bands.size() <= 1) {
+            const auto q = std::next(p);
+            const qreal size = (q != split.bands.end() ? q->position : 1.0) - p->position;
+            split.orientation = orientation;
+            split.bands.insert(std::next(p), { tileIndex + 1, p->position + size / 2 });
+            // p and q may be invalidated.
+        } else {
+            p->index = -static_cast<int>(splitMap_.size());
+            splitMap_.push_back({ orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } } });
+            // split and p may be invalidated.
+        }
+        break;
+    }
+
+    resizeTiles(0, QRectF(QPointF(0.0, 0.0), size()), 0); // TODO: optimize
 }
 
 void TileGenerator::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)

@@ -22,6 +22,8 @@ public:
     QQmlComponent *tile() { return tileComponent_; }
     void setTile(QQmlComponent *tile);
 
+    Q_INVOKABLE void split(int tileIndex, Qt::Orientation orientation);
+
 protected:
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
 

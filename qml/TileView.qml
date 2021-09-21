@@ -3,7 +3,12 @@ import QtQuick.Controls
 import MyTile
 
 Container {
+    function split(tileIndex, orientation) {
+        tileGenerator.split(tileIndex, orientation)
+    }
+
     contentItem: TileGenerator {
+        id: tileGenerator
         tile: Rectangle {
             // TODO
             border.color: "cyan"
