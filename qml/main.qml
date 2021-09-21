@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import MyTile
 
 Window {
     width: 640
@@ -12,10 +13,28 @@ Window {
     RowLayout {
         anchors.fill: parent
 
-        TileView {
-            id: tileView
+        TileGenerator {
+            id: tileGenerator
+
             Layout.fillWidth: true
             Layout.fillHeight: true
+            tile: Rectangle {
+                id: tile
+
+                // TODO
+                border.color: "cyan"
+                border.width: 1
+                color: "#4000ffff"
+
+                Label {
+                    padding: 2
+                    color: "white"
+                    text: tile.TileGenerator.index
+                    background: Rectangle {
+                        color: "darkblue"
+                    }
+                }
+            }
         }
 
         Pane {
@@ -41,14 +60,14 @@ Window {
                 Button {
                     text: "Split H"
                     onClicked: {
-                        tileView.split(tileIndexSpinBox.value, Qt.Horizontal);
+                        tileGenerator.split(tileIndexSpinBox.value, Qt.Horizontal);
                     }
                 }
 
                 Button {
                     text: "Split V"
                     onClicked: {
-                        tileView.split(tileIndexSpinBox.value, Qt.Vertical);
+                        tileGenerator.split(tileIndexSpinBox.value, Qt.Vertical);
                     }
                 }
             }

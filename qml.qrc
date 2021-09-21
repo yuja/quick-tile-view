@@ -1,6 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>qml/TileView.qml</file>
         <file>qml/main.qml</file>
     </qresource>
 </RCC>
