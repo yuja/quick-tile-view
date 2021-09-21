@@ -5,6 +5,10 @@ import QtQuick.Window
 import MyTile
 
 Window {
+    id: root
+
+    property alias currentTileIndex: tileIndexSpinBox.value
+
     width: 640
     height: 480
     visible: true
@@ -21,10 +25,12 @@ Window {
             tile: Rectangle {
                 id: tile
 
+                readonly property bool highlighted: TileGenerator.index === root.currentTileIndex
+
                 // TODO
-                border.color: "cyan"
+                border.color: highlighted ? "cyan" : "lightgray"
                 border.width: 1
-                color: "#4000ffff"
+                color: highlighted ? "#4000ffff" : "#40808080"
 
                 Label {
                     padding: 2
