@@ -8,12 +8,24 @@ QRectF itemRect(const QQuickItem *item)
 {
     return { QPointF(0.0, 0.0), item->size() };
 }
+
+TileGeneratorAttached *tileAttached(QQuickItem *item)
+{
+    if (!item)
+        return nullptr;
+    return qobject_cast<TileGeneratorAttached *>(qmlAttachedPropertiesObject<TileGenerator>(item));
+}
 }
 
 TileGenerator::TileGenerator(QQuickItem *parent) : QQuickItem(parent)
 {
     tiles_.push_back({ nullptr, nullptr });
     splitMap_.push_back({ Qt::Horizontal, { { 0, 0.0 } } });
+}
+
+TileGeneratorAttached *TileGenerator::qmlAttachedProperties(QObject *object)
+{
+    return new TileGeneratorAttached(object);
 }
 
 TileGenerator::~TileGenerator() = default;
@@ -33,7 +45,11 @@ void TileGenerator::recreateTiles()
     std::vector<Tile> newTiles;
     newTiles.reserve(tiles_.size());
     for (size_t i = 0; i < tiles_.size(); ++i) {
-        newTiles.push_back(createTile());
+        auto t = createTile();
+        if (auto *a = tileAttached(t.item.get())) {
+            a->setIndex(static_cast<int>(i));
+        }
+        newTiles.push_back(std::move(t));
     }
     tiles_.swap(newTiles);
     resizeTiles(0, itemRect(this), 0);
@@ -72,6 +88,11 @@ void TileGenerator::split(int tileIndex, Qt::Orientation orientation)
 
     // Insert new tile and adjust indices.
     tiles_.insert(tiles_.begin() + tileIndex + 1, createTile());
+    for (size_t i = static_cast<size_t>(tileIndex) + 1; i < tiles_.size(); ++i) {
+        if (auto *a = tileAttached(tiles_.at(i).item.get())) {
+            a->setIndex(static_cast<int>(i));
+        }
+    }
     for (auto &split : splitMap_) {
         for (auto &b : split.bands) {
             if (b.index <= tileIndex)
@@ -131,4 +152,14 @@ void TileGenerator::resizeTiles(int splitIndex, const QRectF &outerRect, int dep
             resizeTiles(-band.index, rect, depth + 1);
         }
     }
+}
+
+TileGeneratorAttached::TileGeneratorAttached(QObject *parent) : QObject(parent) { }
+
+void TileGeneratorAttached::setIndex(int index)
+{
+    if (index_ == index)
+        return;
+    index_ = index;
+    emit indexChanged();
 }
