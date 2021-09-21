@@ -1,7 +1,7 @@
 #include <QPointF>
 #include <QtQml>
 #include <algorithm>
-#include "tilegenerator.h"
+#include "tiler.h"
 
 namespace {
 QRectF itemRect(const QQuickItem *item)
@@ -9,28 +9,28 @@ QRectF itemRect(const QQuickItem *item)
     return { QPointF(0.0, 0.0), item->size() };
 }
 
-TileGeneratorAttached *tileAttached(QQuickItem *item)
+TilerAttached *tileAttached(QQuickItem *item)
 {
     if (!item)
         return nullptr;
-    return qobject_cast<TileGeneratorAttached *>(qmlAttachedPropertiesObject<TileGenerator>(item));
+    return qobject_cast<TilerAttached *>(qmlAttachedPropertiesObject<Tiler>(item));
 }
 }
 
-TileGenerator::TileGenerator(QQuickItem *parent) : QQuickItem(parent)
+Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
 {
     tiles_.push_back({ nullptr, nullptr });
     splitMap_.push_back({ Qt::Horizontal, { { 0, 0.0 } } });
 }
 
-TileGeneratorAttached *TileGenerator::qmlAttachedProperties(QObject *object)
+TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
 {
-    return new TileGeneratorAttached(object);
+    return new TilerAttached(object);
 }
 
-TileGenerator::~TileGenerator() = default;
+Tiler::~Tiler() = default;
 
-void TileGenerator::setTile(QQmlComponent *tile)
+void Tiler::setTile(QQmlComponent *tile)
 {
     if (tileComponent_ == tile)
         return;
@@ -40,7 +40,7 @@ void TileGenerator::setTile(QQmlComponent *tile)
     emit tileChanged();
 }
 
-void TileGenerator::recreateTiles()
+void Tiler::recreateTiles()
 {
     std::vector<Tile> newTiles;
     newTiles.reserve(tiles_.size());
@@ -56,7 +56,7 @@ void TileGenerator::recreateTiles()
     // Old tile items should be destroyed after new tiles get created.
 }
 
-auto TileGenerator::createTile() -> Tile
+auto Tiler::createTile() -> Tile
 {
     if (!tileComponent_)
         return {};
@@ -79,12 +79,12 @@ auto TileGenerator::createTile() -> Tile
     }
 }
 
-int TileGenerator::count() const
+int Tiler::count() const
 {
     return static_cast<int>(tiles_.size());
 }
 
-QQuickItem *TileGenerator::itemAt(int tileIndex) const
+QQuickItem *Tiler::itemAt(int tileIndex) const
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
         qmlWarning(this) << "tile index out of range:" << tileIndex;
@@ -94,7 +94,7 @@ QQuickItem *TileGenerator::itemAt(int tileIndex) const
     return tiles_.at(static_cast<size_t>(tileIndex)).item.get();
 }
 
-void TileGenerator::split(int tileIndex, Qt::Orientation orientation)
+void Tiler::split(int tileIndex, Qt::Orientation orientation)
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
         qmlWarning(this) << "tile index out of range:" << tileIndex;
@@ -140,13 +140,13 @@ void TileGenerator::split(int tileIndex, Qt::Orientation orientation)
     emit countChanged();
 }
 
-void TileGenerator::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
+void Tiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
     resizeTiles(0, newGeometry, 0);
 }
 
-void TileGenerator::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
+void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
 {
     Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
     const auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
@@ -170,9 +170,9 @@ void TileGenerator::resizeTiles(int splitIndex, const QRectF &outerRect, int dep
     }
 }
 
-TileGeneratorAttached::TileGeneratorAttached(QObject *parent) : QObject(parent) { }
+TilerAttached::TilerAttached(QObject *parent) : QObject(parent) { }
 
-void TileGeneratorAttached::setIndex(int index)
+void TilerAttached::setIndex(int index)
 {
     if (index_ == index)
         return;

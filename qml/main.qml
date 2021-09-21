@@ -17,15 +17,15 @@ Window {
     RowLayout {
         anchors.fill: parent
 
-        TileGenerator {
-            id: tileGenerator
+        Tiler {
+            id: tiler
 
             Layout.fillWidth: true
             Layout.fillHeight: true
             tile: Rectangle {
                 id: tile
 
-                readonly property bool highlighted: TileGenerator.index === root.currentTileIndex
+                readonly property bool highlighted: Tiler.index === root.currentTileIndex
                 readonly property bool occupied: children.length > 1
 
                 // TODO
@@ -36,7 +36,7 @@ Window {
                 Label {
                     padding: 2
                     color: "white"
-                    text: tile.TileGenerator.index
+                    text: tile.Tiler.index
                     background: Rectangle {
                         color: "darkblue"
                     }
@@ -60,21 +60,21 @@ Window {
                         Layout.preferredWidth: 80
                         editable: true
                         from: 0
-                        to: tileGenerator.count - 1
+                        to: tiler.count - 1
                     }
                 }
 
                 Button {
                     text: "Split H"
                     onClicked: {
-                        tileGenerator.split(tileIndexSpinBox.value, Qt.Horizontal);
+                        tiler.split(tileIndexSpinBox.value, Qt.Horizontal);
                     }
                 }
 
                 Button {
                     text: "Split V"
                     onClicked: {
-                        tileGenerator.split(tileIndexSpinBox.value, Qt.Vertical);
+                        tiler.split(tileIndexSpinBox.value, Qt.Vertical);
                     }
                 }
 
@@ -95,8 +95,8 @@ Window {
         }
 
         onItemAdded: function(index, item) {
-            for (let i = 0; i < tileGenerator.count; ++i) {
-                let t = tileGenerator.itemAt(i);
+            for (let i = 0; i < tiler.count; ++i) {
+                let t = tiler.itemAt(i);
                 if (t.occupied)
                     continue;
                 item.parent = t;

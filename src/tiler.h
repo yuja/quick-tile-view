@@ -7,21 +7,21 @@
 #include <memory>
 #include <vector>
 
-class TileGeneratorAttached;
+class TilerAttached;
 
-class TileGenerator : public QQuickItem
+class Tiler : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QQmlComponent *tile READ tile WRITE setTile NOTIFY tileChanged FINAL)
     Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
-    QML_ATTACHED(TileGeneratorAttached)
+    QML_ATTACHED(TilerAttached)
     QML_ELEMENT
 
 public:
-    explicit TileGenerator(QQuickItem *parent = nullptr);
-    ~TileGenerator() override;
+    explicit Tiler(QQuickItem *parent = nullptr);
+    ~Tiler() override;
 
-    static TileGeneratorAttached *qmlAttachedProperties(QObject *object);
+    static TilerAttached *qmlAttachedProperties(QObject *object);
 
     QQmlComponent *tile() { return tileComponent_; }
     void setTile(QQmlComponent *tile);
@@ -66,13 +66,13 @@ private:
     QPointer<QQmlComponent> tileComponent_ = nullptr;
 };
 
-class TileGeneratorAttached : public QObject
+class TilerAttached : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(int index READ index NOTIFY indexChanged FINAL)
 
 public:
-    explicit TileGeneratorAttached(QObject *parent = nullptr);
+    explicit TilerAttached(QObject *parent = nullptr);
 
     int index() const { return index_; }
     void setIndex(int index);

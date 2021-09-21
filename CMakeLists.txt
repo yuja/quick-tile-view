@@ -16,8 +16,8 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick REQUIRED)
 
 set(PROJECT_SOURCES
     src/main.cpp
-    src/tilegenerator.cpp
-    src/tilegenerator.h
+    src/tiler.cpp
+    src/tiler.h
     qml.qrc
 )
 
