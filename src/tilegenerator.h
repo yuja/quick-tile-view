@@ -1,6 +1,4 @@
-#ifndef TILEGENERATOR_H
-#define TILEGENERATOR_H
-
+#pragma once
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -85,5 +83,3 @@ signals:
 private:
     int index_ = -1;
 };
-
-#endif // TILEGENERATOR_H
