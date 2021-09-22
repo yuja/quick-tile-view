@@ -94,6 +94,20 @@ QQuickItem *Tiler::itemAt(int tileIndex) const
     return tiles_.at(static_cast<size_t>(tileIndex)).item.get();
 }
 
+/// Finds indices of (split, band) for the given tile (>= 0) or split (< 0) index.
+std::tuple<int, int> Tiler::findSplitBandByIndex(int index) const
+{
+    for (size_t i = 0; i < splitMap_.size(); ++i) {
+        const auto &split = splitMap_.at(i);
+        const auto p = std::find_if(split.bands.begin(), split.bands.end(),
+                                    [index](const auto &b) { return b.index == index; });
+        if (p == split.bands.end())
+            continue;
+        return { static_cast<int>(i), static_cast<int>(p - split.bands.begin()) };
+    }
+    return { -1, -1 };
+}
+
 void Tiler::split(int tileIndex, Qt::Orientation orientation)
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
@@ -117,24 +131,21 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
     }
 
     // Allocate band for the new tile.
-    for (auto &split : splitMap_) {
-        const auto p = std::find_if(split.bands.begin(), split.bands.end(),
-                                    [tileIndex](const auto &b) { return b.index == tileIndex; });
-        if (p == split.bands.end())
-            continue;
-        if (split.orientation == orientation || split.bands.size() <= 1) {
-            const auto q = std::next(p);
-            const qreal size = (q != split.bands.end() ? q->position : 1.0) - p->position;
-            split.orientation = orientation;
-            split.bands.insert(std::next(p), { tileIndex + 1, p->position + size / 2 });
-            // p and q may be invalidated.
-        } else {
-            p->index = -static_cast<int>(splitMap_.size());
-            splitMap_.push_back(
-                    { orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } }, {} });
-            // split and p may be invalidated.
-        }
-        break;
+    const auto [splitIndex, bandIndex] = findSplitBandByIndex(tileIndex);
+    Q_ASSERT(splitIndex >= 0 && bandIndex >= 0);
+    auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
+    if (split.orientation == orientation || split.bands.size() <= 1) {
+        const auto p = split.bands.begin() + bandIndex;
+        const auto q = std::next(p);
+        const qreal size = (q != split.bands.end() ? q->position : 1.0) - p->position;
+        split.orientation = orientation;
+        split.bands.insert(std::next(p), { tileIndex + 1, p->position + size / 2 });
+        // p and q may be invalidated.
+    } else {
+        auto &b = split.bands.at(static_cast<size_t>(bandIndex));
+        b.index = -static_cast<int>(splitMap_.size());
+        splitMap_.push_back({ orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } }, {} });
+        // split and b may be invalidated.
     }
 
     resizeTiles(0, QRectF(QPointF(0.0, 0.0), size()), 0); // TODO: optimize

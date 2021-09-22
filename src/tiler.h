@@ -5,6 +5,7 @@
 #include <QQuickItem>
 #include <QRectF>
 #include <memory>
+#include <tuple>
 #include <vector>
 
 class TilerAttached;
@@ -60,6 +61,7 @@ private:
 
     void recreateTiles();
     Tile createTile();
+    std::tuple<int, int> findSplitBandByIndex(int index) const;
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);
 
     std::vector<Tile> tiles_;
