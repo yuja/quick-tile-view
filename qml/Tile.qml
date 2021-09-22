@@ -2,16 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import MyTile
 
-Rectangle {
+Item {
     id: root
 
     property bool highlighted
-    readonly property bool occupied: children.length > 3
-
-    // TODO
-    border.color: highlighted ? "cyan" : "lightgray"
-    border.width: 1
-    color: highlighted ? "#4000ffff" : "#40808080"
+    property alias contentItem: contentItem
+    readonly property bool occupied: contentItem.children.length > 0
 
     Rectangle {
         id: hHandle
@@ -67,7 +63,21 @@ Rectangle {
         }
     }
 
+    Rectangle {
+        id: contentItem
+        anchors.left: hHandle.right
+        anchors.top: vHandle.bottom
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        // TODO
+        border.color: root.highlighted ? "cyan" : "lightgray"
+        border.width: 1
+        color: root.highlighted ? "#4000ffff" : "#40808080"
+    }
+
     Label {
+        anchors.left: hHandle.right
+        anchors.top: vHandle.bottom
         padding: 2
         color: "white"
         text: root.Tiler.index

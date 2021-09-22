@@ -22,6 +22,9 @@ Window {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // Left-top tiles have invisible handle.
+            Layout.leftMargin: -5
+            Layout.topMargin: -5
             delegate: Tile {
                 highlighted: Tiler.index === root.currentTileIndex
             }
@@ -82,7 +85,7 @@ Window {
                 let t = tiler.itemAt(i);
                 if (t.occupied)
                     continue;
-                item.parent = t;
+                item.parent = t.contentItem;
                 item.visible = true;
                 break;
             }
