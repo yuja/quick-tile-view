@@ -55,6 +55,7 @@ private:
     {
         Qt::Orientation orientation;
         std::vector<Band> bands;
+        QRectF outerRect; // cache updated by resizeTiles()
     };
 
     void recreateTiles();

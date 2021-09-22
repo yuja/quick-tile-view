@@ -20,7 +20,7 @@ TilerAttached *tileAttached(QQuickItem *item)
 Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
 {
     tiles_.push_back({ nullptr, nullptr });
-    splitMap_.push_back({ Qt::Horizontal, { { 0, 0.0 } } });
+    splitMap_.push_back({ Qt::Horizontal, { { 0, 0.0 } }, {} });
 }
 
 TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
@@ -130,7 +130,8 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
             // p and q may be invalidated.
         } else {
             p->index = -static_cast<int>(splitMap_.size());
-            splitMap_.push_back({ orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } } });
+            splitMap_.push_back(
+                    { orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } }, {} });
             // split and p may be invalidated.
         }
         break;
@@ -149,7 +150,8 @@ void Tiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
 {
     Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
-    const auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
+    auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
+    split.outerRect = outerRect;
     for (size_t i = 0; i < split.bands.size(); ++i) {
         const auto &band = split.bands.at(i);
         const qreal endPos = i + 1 < split.bands.size() ? split.bands.at(i + 1).position : 1.0;
