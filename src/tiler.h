@@ -31,6 +31,7 @@ public:
     Q_INVOKABLE QQuickItem *itemAt(int tileIndex) const;
 
     Q_INVOKABLE void split(int tileIndex, Qt::Orientation orientation);
+    Q_INVOKABLE void moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal itemPos);
 
 protected:
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
@@ -62,6 +63,7 @@ private:
     void recreateTiles();
     Tile createTile();
     std::tuple<int, int> findSplitBandByIndex(int index) const;
+    std::tuple<int, int> findSplitBandByIndex(int index, Qt::Orientation orientation) const;
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);
 
     std::vector<Tile> tiles_;

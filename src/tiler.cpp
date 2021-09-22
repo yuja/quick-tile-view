@@ -108,6 +108,20 @@ std::tuple<int, int> Tiler::findSplitBandByIndex(int index) const
     return { -1, -1 };
 }
 
+std::tuple<int, int> Tiler::findSplitBandByIndex(int index, Qt::Orientation orientation) const
+{
+    const auto [splitIndex, bandIndex] = findSplitBandByIndex(index);
+    if (splitIndex < 0)
+        return { -1, -1 };
+    const auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
+    if (split.orientation == orientation)
+        return { splitIndex, bandIndex };
+    if (splitIndex == 0)
+        return { -1, -1 }; // no more outer split
+    // outer split, if exists, should be the other orientation
+    return findSplitBandByIndex(-splitIndex);
+}
+
 void Tiler::split(int tileIndex, Qt::Orientation orientation)
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
@@ -150,6 +164,28 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
 
     resizeTiles(0, QRectF(QPointF(0.0, 0.0), size()), 0); // TODO: optimize
     emit countChanged();
+}
+
+void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal itemPos)
+{
+    if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
+        qmlWarning(this) << "tile index out of range:" << tileIndex;
+        return;
+    }
+
+    const auto [splitIndex, bandIndex] = findSplitBandByIndex(tileIndex, orientation);
+    if (splitIndex < 0 || bandIndex <= 0) {
+        qmlWarning(this) << "no movable edge found:" << tileIndex;
+        return;
+    }
+
+    auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
+    auto &band = split.bands.at(static_cast<size_t>(bandIndex));
+    // TODO: clamp by sibling positions
+    band.position = orientation == Qt::Horizontal
+            ? (itemPos - split.outerRect.left()) / split.outerRect.width()
+            : (itemPos - split.outerRect.top()) / split.outerRect.height();
+    resizeTiles(splitIndex, split.outerRect, 0);
 }
 
 void Tiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
