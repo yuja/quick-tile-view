@@ -191,7 +191,7 @@ void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal it
 void Tiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
-    resizeTiles(0, newGeometry, 0);
+    resizeTiles(0, itemRect(this), 0);
 }
 
 void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
