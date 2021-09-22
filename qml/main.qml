@@ -22,7 +22,7 @@ Window {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            tile: Rectangle {
+            delegate: Rectangle {
                 id: tile
 
                 readonly property bool highlighted: Tiler.index === root.currentTileIndex

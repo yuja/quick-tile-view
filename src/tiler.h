@@ -13,7 +13,7 @@ class TilerAttached;
 class Tiler : public QQuickItem
 {
     Q_OBJECT
-    Q_PROPERTY(QQmlComponent *tile READ tile WRITE setTile NOTIFY tileChanged FINAL)
+    Q_PROPERTY(QQmlComponent *delegate READ delegate WRITE setDelegate NOTIFY delegateChanged FINAL)
     Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
     QML_ATTACHED(TilerAttached)
     QML_ELEMENT
@@ -24,8 +24,8 @@ public:
 
     static TilerAttached *qmlAttachedProperties(QObject *object);
 
-    QQmlComponent *tile() { return tileComponent_; }
-    void setTile(QQmlComponent *tile);
+    QQmlComponent *delegate() { return tileDelegate_; }
+    void setDelegate(QQmlComponent *delegate);
 
     int count() const;
     Q_INVOKABLE QQuickItem *itemAt(int tileIndex) const;
@@ -37,7 +37,7 @@ protected:
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
 
 signals:
-    void tileChanged();
+    void delegateChanged();
     void countChanged();
 
 private:
@@ -68,7 +68,7 @@ private:
 
     std::vector<Tile> tiles_;
     std::vector<Split> splitMap_;
-    QPointer<QQmlComponent> tileComponent_ = nullptr;
+    QPointer<QQmlComponent> tileDelegate_ = nullptr;
 };
 
 class TilerAttached : public QObject

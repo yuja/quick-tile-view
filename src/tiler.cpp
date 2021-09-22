@@ -30,14 +30,14 @@ TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
 
 Tiler::~Tiler() = default;
 
-void Tiler::setTile(QQmlComponent *tile)
+void Tiler::setDelegate(QQmlComponent *delegate)
 {
-    if (tileComponent_ == tile)
+    if (tileDelegate_ == delegate)
         return;
 
-    tileComponent_ = tile;
+    tileDelegate_ = delegate;
     recreateTiles();
-    emit tileChanged();
+    emit delegateChanged();
 }
 
 void Tiler::recreateTiles()
@@ -58,17 +58,17 @@ void Tiler::recreateTiles()
 
 auto Tiler::createTile() -> Tile
 {
-    if (!tileComponent_)
+    if (!tileDelegate_)
         return {};
 
     // See qquicksplitview.cpp
-    auto *creationContext = tileComponent_->creationContext();
+    auto *creationContext = tileDelegate_->creationContext();
     if (!creationContext)
         creationContext = qmlContext(this);
     auto context = std::make_unique<QQmlContext>(creationContext);
     context->setContextObject(this);
 
-    auto *obj = tileComponent_->create(context.get());
+    auto *obj = tileDelegate_->create(context.get());
     if (auto *item = qobject_cast<QQuickItem *>(obj)) {
         item->setParentItem(this);
         return { std::unique_ptr<QQuickItem>(item), std::move(context) };
