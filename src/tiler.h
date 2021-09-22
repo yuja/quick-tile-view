@@ -35,6 +35,7 @@ public:
 
 protected:
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
+    void updatePolish() override;
 
 signals:
     void delegateChanged();

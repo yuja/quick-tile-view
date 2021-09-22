@@ -52,7 +52,7 @@ void Tiler::recreateTiles()
         newTiles.push_back(std::move(t));
     }
     tiles_.swap(newTiles);
-    resizeTiles(0, itemRect(this), 0);
+    polish();
     // Old tile items should be destroyed after new tiles get created.
 }
 
@@ -162,7 +162,7 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
         // split and b may be invalidated.
     }
 
-    resizeTiles(0, QRectF(QPointF(0.0, 0.0), size()), 0); // TODO: optimize
+    polish();
     emit countChanged();
 }
 
@@ -185,12 +185,17 @@ void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal it
     band.position = orientation == Qt::Horizontal
             ? (itemPos - split.outerRect.left()) / split.outerRect.width()
             : (itemPos - split.outerRect.top()) / split.outerRect.height();
-    resizeTiles(splitIndex, split.outerRect, 0);
+    polish();
 }
 
 void Tiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
+    polish();
+}
+
+void Tiler::updatePolish()
+{
     resizeTiles(0, itemRect(this), 0);
 }
 
