@@ -39,7 +39,9 @@ Window {
                 anchors.right: parent.right
                 anchors.top: parent.top
 
-                RowLayout {
+                GridLayout {
+                    columns: 2
+
                     Label { text: "tile" }
                     SpinBox {
                         id: tileIndexSpinBox
@@ -47,6 +49,30 @@ Window {
                         editable: true
                         from: 0
                         to: tiler.count - 1
+                    }
+
+                    Label { text: "min w" }
+                    SpinBox {
+                        Layout.preferredWidth: 80
+                        editable: true
+                        from: 0
+                        to: 1000
+                        value: tiler.itemAt(root.currentTileIndex).Tiler.minimumWidth
+                        onValueModified: {
+                            tiler.itemAt(root.currentTileIndex).Tiler.minimumWidth = value;
+                        }
+                    }
+
+                    Label { text: "min h" }
+                    SpinBox {
+                        Layout.preferredWidth: 80
+                        editable: true
+                        from: 0
+                        to: 1000
+                        value: tiler.itemAt(root.currentTileIndex).Tiler.minimumHeight
+                        onValueModified: {
+                            tiler.itemAt(root.currentTileIndex).Tiler.minimumHeight = value;
+                        }
                     }
                 }
 

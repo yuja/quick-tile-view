@@ -9,6 +9,9 @@ Item {
     property alias contentItem: contentItem
     readonly property bool occupied: contentItem.children.length > 0
 
+    Tiler.minimumWidth: 10
+    Tiler.minimumHeight: 20
+
     Rectangle {
         id: hHandle
         anchors.left: parent.left
