@@ -201,11 +201,25 @@ void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal it
     }
 
     auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
-    auto &band = split.bands.at(static_cast<size_t>(bandIndex));
-    // TODO: clamp by sibling positions
-    band.position = orientation == Qt::Horizontal
+    const auto normalizedSize = [orientation, &split](const QSizeF &size) {
+        return orientation == Qt::Horizontal ? size.width() / split.outerRect.width()
+                                             : size.height() / split.outerRect.height();
+    };
+    const auto &prevBand = split.bands.at(static_cast<size_t>(bandIndex - 1));
+    auto &targetBand = split.bands.at(static_cast<size_t>(bandIndex));
+
+    const qreal minPos = prevBand.position + normalizedSize(minimumSizeByIndex(prevBand.index));
+    const qreal nextPos = bandIndex + 1 < static_cast<int>(split.bands.size())
+            ? split.bands.at(static_cast<size_t>(bandIndex + 1)).position
+            : 1.0;
+    const qreal maxPos = nextPos - normalizedSize(minimumSizeByIndex(targetBand.index));
+    if (minPos > maxPos)
+        return;
+
+    const qreal exactPos = orientation == Qt::Horizontal
             ? (itemPos - split.outerRect.left()) / split.outerRect.width()
             : (itemPos - split.outerRect.top()) / split.outerRect.height();
+    targetBand.position = std::clamp(exactPos, minPos, maxPos);
     polish();
 }
 
