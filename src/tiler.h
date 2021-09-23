@@ -75,17 +75,23 @@ private:
 class TilerAttached : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(Tiler *tiler READ tiler NOTIFY tilerChanged FINAL)
     Q_PROPERTY(int index READ index NOTIFY indexChanged FINAL)
 
 public:
     explicit TilerAttached(QObject *parent = nullptr);
 
+    Tiler *tiler() const { return tiler_; }
+    void setTiler(Tiler *tiler);
+
     int index() const { return index_; }
     void setIndex(int index);
 
 signals:
+    void tilerChanged();
     void indexChanged();
 
 private:
+    QPointer<Tiler> tiler_ = nullptr;
     int index_ = -1;
 };

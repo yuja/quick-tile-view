@@ -47,6 +47,7 @@ void Tiler::recreateTiles()
     for (size_t i = 0; i < tiles_.size(); ++i) {
         auto t = createTile();
         if (auto *a = tileAttached(t.item.get())) {
+            a->setTiler(this);
             a->setIndex(static_cast<int>(i));
         }
         newTiles.push_back(std::move(t));
@@ -133,6 +134,7 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
     tiles_.insert(tiles_.begin() + tileIndex + 1, createTile());
     for (size_t i = static_cast<size_t>(tileIndex) + 1; i < tiles_.size(); ++i) {
         if (auto *a = tileAttached(tiles_.at(i).item.get())) {
+            a->setTiler(this);
             a->setIndex(static_cast<int>(i));
         }
     }
@@ -225,6 +227,14 @@ void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
 }
 
 TilerAttached::TilerAttached(QObject *parent) : QObject(parent) { }
+
+void TilerAttached::setTiler(Tiler *tiler)
+{
+    if (tiler_ == tiler)
+        return;
+    tiler_ = tiler;
+    emit tilerChanged();
+}
 
 void TilerAttached::setIndex(int index)
 {

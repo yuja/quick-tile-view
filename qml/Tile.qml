@@ -29,6 +29,7 @@ Item {
             onCentroidChanged: {
                 if (!active)
                     return;
+                let tiler = root.Tiler.tiler;
                 let pos = hHandle.mapToItem(
                         tiler, centroid.position.x - centroid.pressPosition.x, 0).x;
                 tiler.moveTopLeftEdge(root.Tiler.index, Qt.Horizontal, pos);
@@ -56,6 +57,7 @@ Item {
             onCentroidChanged: {
                 if (!active)
                     return;
+                let tiler = root.Tiler.tiler;
                 let pos = vHandle.mapToItem(
                         tiler, 0, centroid.position.y - centroid.pressPosition.y).y;
                 tiler.moveTopLeftEdge(root.Tiler.index, Qt.Vertical, pos);
