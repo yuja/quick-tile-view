@@ -66,7 +66,9 @@ private:
     void recreateTiles();
     Tile createTile();
     std::tuple<int, int> findSplitBandByIndex(int index) const;
-    std::tuple<int, int> findSplitBandByIndex(int index, Qt::Orientation orientation) const;
+    std::tuple<int, int> findMovableSplitBandByIndex(int index, Qt::Orientation orientation) const;
+    std::tuple<int, int> findMovableSplitBandByIndex(const Split &split, int index,
+                                                     Qt::Orientation orientation, int depth) const;
     QSizeF minimumSizeByIndex(int index) const;
     void accumulateTiles(int splitIndex, int depth);
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);

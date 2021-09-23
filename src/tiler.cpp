@@ -109,18 +109,34 @@ std::tuple<int, int> Tiler::findSplitBandByIndex(int index) const
     return { -1, -1 };
 }
 
-std::tuple<int, int> Tiler::findSplitBandByIndex(int index, Qt::Orientation orientation) const
+std::tuple<int, int> Tiler::findMovableSplitBandByIndex(int index,
+                                                        Qt::Orientation orientation) const
 {
-    const auto [splitIndex, bandIndex] = findSplitBandByIndex(index);
-    if (splitIndex < 0)
-        return { -1, -1 };
-    const auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
-    if (split.orientation == orientation)
-        return { splitIndex, bandIndex };
-    if (splitIndex == 0)
-        return { -1, -1 }; // no more outer split
-    // outer split, if exists, should be the other orientation
-    return findSplitBandByIndex(-splitIndex);
+    return findMovableSplitBandByIndex(splitMap_.at(0), index, orientation, 0);
+}
+
+std::tuple<int, int> Tiler::findMovableSplitBandByIndex(const Split &split, int index,
+                                                        Qt::Orientation orientation,
+                                                        int depth) const
+{
+    Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
+    for (const auto &band : split.bands) {
+        const int splitIndex = static_cast<int>(&split - splitMap_.data());
+        const int bandIndex = static_cast<int>(&band - split.bands.data());
+        if (band.index == index)
+            return { splitIndex, split.orientation == orientation ? bandIndex : 0 };
+        if (band.index >= 0)
+            continue; // no subsplit
+        const auto [subSplitIndex, subBandIndex] = findMovableSplitBandByIndex(
+                splitMap_.at(static_cast<size_t>(-band.index)), index, orientation, depth + 1);
+        if (subSplitIndex < 0)
+            continue; // no subsplit matched
+        if (subBandIndex > 0)
+            return { subSplitIndex, subBandIndex }; // movable subsplit found
+        // subsplit matched but not movable, propagate this split as candidate
+        return { splitIndex, split.orientation == orientation ? bandIndex : 0 };
+    }
+    return { -1, -1 };
 }
 
 QSizeF Tiler::minimumSizeByIndex(int index) const
@@ -194,7 +210,7 @@ void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal it
         return;
     }
 
-    const auto [splitIndex, bandIndex] = findSplitBandByIndex(tileIndex, orientation);
+    const auto [splitIndex, bandIndex] = findMovableSplitBandByIndex(tileIndex, orientation);
     if (splitIndex < 0 || bandIndex <= 0) {
         qmlWarning(this) << "no movable edge found:" << tileIndex;
         return;
