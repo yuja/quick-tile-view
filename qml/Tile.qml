@@ -8,6 +8,7 @@ Item {
     property bool highlighted
     property alias contentItem: contentItem
     readonly property bool occupied: contentItem.children.length > 0
+    signal tapped()
 
     Tiler.minimumWidth: 10
     Tiler.minimumHeight: 20
@@ -78,6 +79,10 @@ Item {
         border.color: root.highlighted ? "cyan" : "lightgray"
         border.width: 1
         color: root.highlighted ? "#4000ffff" : "#40808080"
+
+        TapHandler {
+            onTapped: root.tapped()
+        }
     }
 
     Label {

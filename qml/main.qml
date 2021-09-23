@@ -27,6 +27,9 @@ Window {
             Layout.topMargin: -5
             delegate: Tile {
                 highlighted: Tiler.index === root.currentTileIndex
+                onTapped: {
+                    root.currentTileIndex = Tiler.index;
+                }
             }
         }
 
