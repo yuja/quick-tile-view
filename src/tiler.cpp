@@ -243,3 +243,28 @@ void TilerAttached::setIndex(int index)
     index_ = index;
     emit indexChanged();
 }
+
+void TilerAttached::setMinimumWidth(qreal width)
+{
+    if (qFuzzyCompare(minimumWidth_, width))
+        return;
+    minimumWidth_ = width;
+    requestPolish();
+    emit minimumWidthChanged();
+}
+
+void TilerAttached::setMinimumHeight(qreal height)
+{
+    if (qFuzzyCompare(minimumHeight_, height))
+        return;
+    minimumHeight_ = height;
+    requestPolish();
+    emit minimumHeightChanged();
+}
+
+void TilerAttached::requestPolish()
+{
+    if (!tiler_)
+        return;
+    tiler_->polish();
+}

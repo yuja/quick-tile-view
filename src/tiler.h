@@ -77,6 +77,10 @@ class TilerAttached : public QObject
     Q_OBJECT
     Q_PROPERTY(Tiler *tiler READ tiler NOTIFY tilerChanged FINAL)
     Q_PROPERTY(int index READ index NOTIFY indexChanged FINAL)
+    Q_PROPERTY(qreal minimumWidth READ minimumWidth WRITE setMinimumWidth NOTIFY minimumWidthChanged
+                       FINAL)
+    Q_PROPERTY(qreal minimumHeight READ minimumHeight WRITE setMinimumHeight NOTIFY
+                       minimumHeightChanged FINAL)
 
 public:
     explicit TilerAttached(QObject *parent = nullptr);
@@ -87,11 +91,23 @@ public:
     int index() const { return index_; }
     void setIndex(int index);
 
+    qreal minimumWidth() const { return minimumWidth_; }
+    void setMinimumWidth(qreal width);
+
+    qreal minimumHeight() const { return minimumHeight_; }
+    void setMinimumHeight(qreal height);
+
 signals:
     void tilerChanged();
     void indexChanged();
+    void minimumWidthChanged();
+    void minimumHeightChanged();
 
 private:
+    void requestPolish();
+
     QPointer<Tiler> tiler_ = nullptr;
     int index_ = -1;
+    qreal minimumWidth_ = 0.0;
+    qreal minimumHeight_ = 0.0;
 };
