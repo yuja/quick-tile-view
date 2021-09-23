@@ -248,14 +248,45 @@ void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
     Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
     auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
     split.outerRect = outerRect;
+
+    const qreal boundStartPos =
+            split.orientation == Qt::Horizontal ? outerRect.left() : outerRect.top();
+    const qreal boundEndPos =
+            split.orientation == Qt::Horizontal ? outerRect.right() : outerRect.bottom();
+
+    // Calculate position and apply minimumWidth/Height from left/top to right/bottom.
+    std::vector<qreal> itemPositions;
+    itemPositions.reserve(split.bands.size() + 1);
+    qreal boundPos = boundStartPos;
+    for (const auto &band : split.bands) {
+        const qreal exactPos = split.orientation == Qt::Horizontal
+                ? outerRect.left() + band.position * outerRect.width()
+                : outerRect.top() + band.position * outerRect.height();
+        const qreal adjustedPos = std::max(exactPos, boundPos);
+        itemPositions.push_back(adjustedPos);
+        const auto min = minimumSizeByIndex(band.index);
+        boundPos = adjustedPos + (split.orientation == Qt::Horizontal ? min.width() : min.height());
+    }
+    itemPositions.push_back(boundEndPos);
+
+    // Apply minimumWidth/Height from right/bottom to left/top if position overflowed.
+    boundPos = boundEndPos;
+    for (size_t i = split.bands.size() - 1; i > 0; --i) {
+        const auto &band = split.bands.at(i);
+        const auto min = minimumSizeByIndex(band.index);
+        boundPos -= split.orientation == Qt::Horizontal ? min.width() : min.height();
+        if (itemPositions.at(i) <= boundPos)
+            break;
+        itemPositions.at(i) = boundPos;
+    }
+
     for (size_t i = 0; i < split.bands.size(); ++i) {
         const auto &band = split.bands.at(i);
-        const qreal endPos = i + 1 < split.bands.size() ? split.bands.at(i + 1).position : 1.0;
+        const qreal s = itemPositions.at(i);
+        const qreal e = itemPositions.at(i + 1);
         const auto rect = split.orientation == Qt::Horizontal
-                ? QRectF(outerRect.x() + band.position * outerRect.width(), outerRect.y(),
-                         (endPos - band.position) * outerRect.width(), outerRect.height())
-                : QRectF(outerRect.x(), outerRect.y() + band.position * outerRect.height(),
-                         outerRect.width(), (endPos - band.position) * outerRect.height());
+                ? QRectF(s, outerRect.y(), e - s, outerRect.height())
+                : QRectF(outerRect.x(), s, outerRect.width(), e - s);
         if (band.index >= 0) {
             auto &item = tiles_.at(static_cast<size_t>(band.index)).item;
             if (!item)
