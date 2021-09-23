@@ -20,7 +20,7 @@ TilerAttached *tileAttached(QQuickItem *item)
 Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
 {
     tiles_.push_back({ nullptr, nullptr });
-    splitMap_.push_back({ Qt::Horizontal, { { 0, 0.0 } }, {} });
+    splitMap_.push_back({ Qt::Horizontal, { { 0, 0.0 } }, {}, {} });
 }
 
 TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
@@ -123,6 +123,24 @@ std::tuple<int, int> Tiler::findSplitBandByIndex(int index, Qt::Orientation orie
     return findSplitBandByIndex(-splitIndex);
 }
 
+QSizeF Tiler::minimumSizeByIndex(int index) const
+{
+    Q_ASSERT(-static_cast<int>(splitMap_.size()) < index
+             && index < static_cast<int>(tiles_.size()));
+    if (index >= 0) {
+        const auto &t = tiles_.at(static_cast<size_t>(index));
+        if (!t.item)
+            return { 0.0, 0.0 };
+        const auto *a = tileAttached(t.item.get());
+        if (!a)
+            return { 0.0, 0.0 };
+        return { a->minimumWidth(), a->minimumHeight() };
+    } else {
+        const auto &s = splitMap_.at(static_cast<size_t>(-index));
+        return s.minimumSize;
+    }
+}
+
 void Tiler::split(int tileIndex, Qt::Orientation orientation)
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
@@ -160,7 +178,8 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
     } else {
         auto &b = split.bands.at(static_cast<size_t>(bandIndex));
         b.index = -static_cast<int>(splitMap_.size());
-        splitMap_.push_back({ orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } }, {} });
+        splitMap_.push_back(
+                { orientation, { { tileIndex, 0.0 }, { tileIndex + 1, 0.5 } }, {}, {} });
         // split and b may be invalidated.
     }
 
@@ -198,7 +217,30 @@ void Tiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 
 void Tiler::updatePolish()
 {
+    accumulateTiles(0, 0);
     resizeTiles(0, itemRect(this), 0);
+}
+
+void Tiler::accumulateTiles(int splitIndex, int depth)
+{
+    Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
+    auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
+    qreal totalMinimumWidth = 0.0, totalMinimumHeight = 0.0;
+    for (size_t i = 0; i < split.bands.size(); ++i) {
+        const auto &band = split.bands.at(i);
+        if (band.index < 0) {
+            accumulateTiles(-band.index, depth + 1);
+        }
+        const auto min = minimumSizeByIndex(band.index);
+        if (split.orientation == Qt::Horizontal) {
+            totalMinimumWidth += min.width();
+            totalMinimumHeight = std::max(min.height(), totalMinimumHeight);
+        } else {
+            totalMinimumWidth = std::max(min.width(), totalMinimumWidth);
+            totalMinimumHeight += min.height();
+        }
+    }
+    split.minimumSize = { totalMinimumWidth, totalMinimumHeight };
 }
 
 void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)

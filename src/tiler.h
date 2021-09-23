@@ -4,6 +4,7 @@
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QRectF>
+#include <QSizeF>
 #include <memory>
 #include <tuple>
 #include <vector>
@@ -59,12 +60,15 @@ private:
         Qt::Orientation orientation;
         std::vector<Band> bands;
         QRectF outerRect; // cache updated by resizeTiles()
+        QSizeF minimumSize; // cache updated by accumulateTiles()
     };
 
     void recreateTiles();
     Tile createTile();
     std::tuple<int, int> findSplitBandByIndex(int index) const;
     std::tuple<int, int> findSplitBandByIndex(int index, Qt::Orientation orientation) const;
+    QSizeF minimumSizeByIndex(int index) const;
+    void accumulateTiles(int splitIndex, int depth);
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);
 
     std::vector<Tile> tiles_;
