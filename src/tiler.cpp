@@ -72,7 +72,7 @@ auto Tiler::createTile(int index) -> Tile
             a->setIndex(index);
         }
         tileDelegate_->completeCreate();
-        return { std::unique_ptr<QQuickItem>(item), std::move(context) };
+        return { std::unique_ptr<QQuickItem, ItemDeleter>(item), std::move(context) };
     } else {
         qmlWarning(this) << "tile component does not create an item";
         delete obj;
@@ -230,12 +230,7 @@ void Tiler::close(int tileIndex)
             b.index -= 1;
         }
     }
-    const auto p = tiles_.begin() + tileIndex;
-    if (auto *item = p->item.release()) {
-        // Item must be alive while its signal handling is in progress.
-        item->deleteLater();
-    }
-    tiles_.erase(p);
+    tiles_.erase(tiles_.begin() + tileIndex);
 
     polish();
     emit countChanged();
@@ -399,6 +394,14 @@ void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
             resizeTiles(-band.index, rect, depth + 1);
         }
     }
+}
+
+void Tiler::ItemDeleter::operator()(QQuickItem *item) const
+{
+    if (!item)
+        return;
+    // Item must be alive while its signal handling is in progress.
+    item->deleteLater();
 }
 
 TilerAttached::TilerAttached(QObject *parent) : QObject(parent) { }

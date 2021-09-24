@@ -44,9 +44,15 @@ signals:
     void countChanged();
 
 private:
+    class ItemDeleter
+    {
+    public:
+        void operator()(QQuickItem *item) const;
+    };
+
     struct Tile
     {
-        std::unique_ptr<QQuickItem> item; // may be nullptr
+        std::unique_ptr<QQuickItem, ItemDeleter> item; // may be nullptr
         std::unique_ptr<QQmlContext> context; // may be nullptr if !item
     };
 
