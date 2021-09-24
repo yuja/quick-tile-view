@@ -45,19 +45,14 @@ void Tiler::recreateTiles()
     std::vector<Tile> newTiles;
     newTiles.reserve(tiles_.size());
     for (size_t i = 0; i < tiles_.size(); ++i) {
-        auto t = createTile();
-        if (auto *a = tileAttached(t.item.get())) {
-            a->setTiler(this);
-            a->setIndex(static_cast<int>(i));
-        }
-        newTiles.push_back(std::move(t));
+        newTiles.push_back(createTile(static_cast<int>(i)));
     }
     tiles_.swap(newTiles);
     polish();
     // Old tile items should be destroyed after new tiles get created.
 }
 
-auto Tiler::createTile() -> Tile
+auto Tiler::createTile(int index) -> Tile
 {
     if (!tileDelegate_)
         return {};
@@ -69,9 +64,14 @@ auto Tiler::createTile() -> Tile
     auto context = std::make_unique<QQmlContext>(creationContext);
     context->setContextObject(this);
 
-    auto *obj = tileDelegate_->create(context.get());
+    auto *obj = tileDelegate_->beginCreate(context.get());
     if (auto *item = qobject_cast<QQuickItem *>(obj)) {
         item->setParentItem(this);
+        if (auto *a = tileAttached(item)) {
+            a->setTiler(this);
+            a->setIndex(index);
+        }
+        tileDelegate_->completeCreate();
         return { std::unique_ptr<QQuickItem>(item), std::move(context) };
     } else {
         qmlWarning(this) << "tile component does not create an item";
@@ -165,10 +165,9 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
     }
 
     // Insert new tile and adjust indices.
-    tiles_.insert(tiles_.begin() + tileIndex + 1, createTile());
-    for (size_t i = static_cast<size_t>(tileIndex) + 1; i < tiles_.size(); ++i) {
+    tiles_.insert(tiles_.begin() + tileIndex + 1, createTile(tileIndex + 1));
+    for (size_t i = static_cast<size_t>(tileIndex) + 2; i < tiles_.size(); ++i) {
         if (auto *a = tileAttached(tiles_.at(i).item.get())) {
-            a->setTiler(this);
             a->setIndex(static_cast<int>(i));
         }
     }

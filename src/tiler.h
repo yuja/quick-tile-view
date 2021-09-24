@@ -65,7 +65,7 @@ private:
     };
 
     void recreateTiles();
-    Tile createTile();
+    Tile createTile(int index);
     std::tuple<int, int> findSplitBandByIndex(int index) const;
     std::tuple<int, int> findMovableSplitBandByIndex(int index, Qt::Orientation orientation) const;
     std::tuple<int, int> findMovableSplitBandByIndex(const Split &split, int index,
