@@ -32,6 +32,7 @@ public:
     Q_INVOKABLE QQuickItem *itemAt(int tileIndex) const;
 
     Q_INVOKABLE void split(int tileIndex, Qt::Orientation orientation);
+    Q_INVOKABLE void close(int tileIndex);
     Q_INVOKABLE void moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal itemPos);
 
 protected:
@@ -70,6 +71,8 @@ private:
     std::tuple<int, int> findMovableSplitBandByIndex(const Split &split, int index,
                                                      Qt::Orientation orientation, int depth) const;
     QSizeF minimumSizeByIndex(int index) const;
+    bool unlinkTileByIndex(Split &split, int index, int depth);
+    void cleanTrailingEmptySplits();
     void accumulateTiles(int splitIndex, int depth);
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);
 

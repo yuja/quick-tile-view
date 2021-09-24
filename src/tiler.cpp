@@ -203,6 +203,79 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
     emit countChanged();
 }
 
+void Tiler::close(int tileIndex)
+{
+    if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
+        qmlWarning(this) << "tile index out of range:" << tileIndex;
+        return;
+    }
+    if (tiles_.size() <= 1) {
+        qmlWarning(this) << "cannot close the last tile";
+        return;
+    }
+
+    // Deallocate band of the tile to be removed.
+    unlinkTileByIndex(splitMap_.at(0), tileIndex, 0);
+    cleanTrailingEmptySplits();
+
+    // Adjust tile indices and remove it.
+    for (size_t i = static_cast<size_t>(tileIndex) + 1; i < tiles_.size(); ++i) {
+        if (auto *a = tileAttached(tiles_.at(i).item.get())) {
+            a->setIndex(static_cast<int>(i - 1));
+        }
+    }
+    for (auto &split : splitMap_) {
+        for (auto &b : split.bands) {
+            if (b.index <= tileIndex)
+                continue;
+            b.index -= 1;
+        }
+    }
+    const auto p = tiles_.begin() + tileIndex;
+    if (auto *item = p->item.release()) {
+        // Item must be alive while its signal handling is in progress.
+        item->deleteLater();
+    }
+    tiles_.erase(p);
+
+    polish();
+    emit countChanged();
+}
+
+bool Tiler::unlinkTileByIndex(Split &split, int index, int depth)
+{
+    Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
+    for (auto p = split.bands.begin(); p != split.bands.end(); ++p) {
+        if (p->index == index) {
+            Q_ASSERT(split.bands.size() >= 2);
+            if (p == split.bands.begin()) {
+                std::next(p)->position = 0.0;
+            }
+            split.bands.erase(p); // iterator gets invalidated.
+            return true;
+        }
+        if (p->index >= 0)
+            continue;
+        auto &subSplit = splitMap_.at(static_cast<size_t>(-p->index));
+        if (unlinkTileByIndex(subSplit, index, depth + 1)) {
+            if (subSplit.bands.size() != 1)
+                return true;
+            p->index = subSplit.bands.back().index;
+            subSplit.bands.pop_back(); // leave empty split so split refs wouldn't be invalidated.
+            return true;
+        }
+    }
+    return false;
+}
+
+/// Removes empty splits without remapping indices.
+void Tiler::cleanTrailingEmptySplits()
+{
+    const auto p = std::find_if(splitMap_.rbegin(), splitMap_.rend(),
+                                [](const auto &s) { return !s.bands.empty(); });
+    splitMap_.erase(p.base(), splitMap_.end());
+}
+
 void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal itemPos)
 {
     if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {

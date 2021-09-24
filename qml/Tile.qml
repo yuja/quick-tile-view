@@ -95,4 +95,16 @@ Item {
             color: "darkblue"
         }
     }
+
+    Button {
+        anchors.right: contentItem.right
+        anchors.top: contentItem.top
+        width: 20
+        height: 20
+        text: "x"
+        enabled: root.Tiler.tiler.count > 1
+        onClicked: {
+            root.Tiler.tiler.close(root.Tiler.index);
+        }
+    }
 }
