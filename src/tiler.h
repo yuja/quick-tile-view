@@ -15,6 +15,10 @@ class Tiler : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QQmlComponent *delegate READ delegate WRITE setDelegate NOTIFY delegateChanged FINAL)
+    Q_PROPERTY(QQmlComponent *horizontalHandle READ horizontalHandle WRITE setHorizontalHandle
+                       NOTIFY horizontalHandleChanged FINAL)
+    Q_PROPERTY(QQmlComponent *verticalHandle READ verticalHandle WRITE setVerticalHandle NOTIFY
+                       verticalHandleChanged FINAL)
     Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
     QML_ATTACHED(TilerAttached)
     QML_ELEMENT
@@ -27,6 +31,12 @@ public:
 
     QQmlComponent *delegate() { return tileDelegate_; }
     void setDelegate(QQmlComponent *delegate);
+
+    QQmlComponent *horizontalHandle() { return horizontalHandle_; }
+    void setHorizontalHandle(QQmlComponent *handle);
+
+    QQmlComponent *verticalHandle() { return verticalHandle_; }
+    void setVerticalHandle(QQmlComponent *handle);
 
     int count() const;
     Q_INVOKABLE QQuickItem *itemAt(int tileIndex) const;
@@ -41,6 +51,8 @@ protected:
 
 signals:
     void delegateChanged();
+    void horizontalHandleChanged();
+    void verticalHandleChanged();
     void countChanged();
 
 private:
@@ -60,6 +72,8 @@ private:
     {
         int index; // >=0: tile[i], <0: splitMap[-i]
         qreal position;
+        std::unique_ptr<QQuickItem, ItemDeleter> handleItem; // may be nullptr
+        std::unique_ptr<QQmlContext> handleContext; // may be nullptr if !item
     };
 
     struct Split
@@ -72,6 +86,8 @@ private:
 
     void recreateTiles();
     Tile createTile(int index);
+    void recreateHandles(Qt::Orientation orientation);
+    Band createBand(int index, qreal position, Qt::Orientation orientation);
     std::tuple<int, int> findSplitBandByIndex(int index) const;
     std::tuple<int, int> findMovableSplitBandByIndex(int index, Qt::Orientation orientation) const;
     std::tuple<int, int> findMovableSplitBandByIndex(const Split &split, int index,
@@ -85,6 +101,8 @@ private:
     std::vector<Tile> tiles_;
     std::vector<Split> splitMap_;
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
+    QPointer<QQmlComponent> horizontalHandle_ = nullptr;
+    QPointer<QQmlComponent> verticalHandle_ = nullptr;
 };
 
 class TilerAttached : public QObject

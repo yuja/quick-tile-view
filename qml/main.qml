@@ -22,13 +22,26 @@ Window {
 
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // Left-top tiles have invisible handle.
-            Layout.leftMargin: -5
-            Layout.topMargin: -5
             delegate: Tile {
                 highlighted: Tiler.index === root.currentTileIndex
                 onTapped: {
                     root.currentTileIndex = Tiler.index;
+                }
+            }
+            horizontalHandle: Rectangle {
+                implicitWidth: 5
+                z: 1
+                color: "gray"
+                HoverHandler {
+                    cursorShape: Qt.SplitHCursor
+                }
+            }
+            verticalHandle: Rectangle {
+                implicitHeight: 5
+                z: 1
+                color: "gray"
+                HoverHandler {
+                    cursorShape: Qt.SplitVCursor
                 }
             }
         }

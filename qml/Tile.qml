@@ -10,17 +10,17 @@ Item {
     readonly property bool occupied: contentItem.children.length > 0
     signal tapped()
 
-    Tiler.minimumWidth: 10
-    Tiler.minimumHeight: 20
+    Tiler.minimumWidth: 5
+    Tiler.minimumHeight: 15
 
-    Rectangle {
+    // TODO: migrate to handle component
+    Item {
         id: hHandle
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         visible: root.x > 0
         width: 5
-        color: "gray"
 
         HoverHandler {
             cursorShape: Qt.SplitHCursor
@@ -41,14 +41,14 @@ Item {
         }
     }
 
-    Rectangle {
+    // TODO: migrate to handle component
+    Item {
         id: vHandle
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
         visible: root.y > 0
         height: 5
-        color: "gray"
 
         HoverHandler {
             cursorShape: Qt.SplitVCursor
@@ -71,10 +71,7 @@ Item {
 
     Rectangle {
         id: contentItem
-        anchors.left: hHandle.right
-        anchors.top: vHandle.bottom
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.fill: parent
         // TODO
         border.color: root.highlighted ? "cyan" : "lightgray"
         border.width: 1
@@ -86,8 +83,8 @@ Item {
     }
 
     Label {
-        anchors.left: hHandle.right
-        anchors.top: vHandle.bottom
+        anchors.left: contentItem.left
+        anchors.top: contentItem.top
         padding: 2
         color: "white"
         text: root.Tiler.index
