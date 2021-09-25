@@ -65,14 +65,14 @@ auto Tiler::createTile(int index) -> Tile
     context->setContextObject(this);
 
     auto *obj = tileDelegate_->beginCreate(context.get());
-    if (auto *item = qobject_cast<QQuickItem *>(obj)) {
+    if (auto item = std::unique_ptr<QQuickItem, ItemDeleter>(qobject_cast<QQuickItem *>(obj))) {
         item->setParentItem(this);
-        if (auto *a = tileAttached(item)) {
+        if (auto *a = tileAttached(item.get())) {
             a->setTiler(this);
             a->setIndex(index);
         }
         tileDelegate_->completeCreate();
-        return { std::unique_ptr<QQuickItem, ItemDeleter>(item), std::move(context) };
+        return { std::move(item), std::move(context) };
     } else {
         qmlWarning(this) << "tile component does not create an item";
         delete obj;
