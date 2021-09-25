@@ -47,14 +47,10 @@ void Tiler::setDelegate(QQmlComponent *delegate)
 
 void Tiler::recreateTiles()
 {
-    std::vector<Tile> newTiles;
-    newTiles.reserve(tiles_.size());
     for (size_t i = 0; i < tiles_.size(); ++i) {
-        newTiles.push_back(createTile(static_cast<int>(i)));
+        tiles_.at(i) = createTile(static_cast<int>(i));
     }
-    tiles_.swap(newTiles);
     polish();
-    // Old tile items should be destroyed after new tiles get created.
 }
 
 auto Tiler::createTile(int index) -> Tile
