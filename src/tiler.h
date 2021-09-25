@@ -43,9 +43,11 @@ public:
 
     Q_INVOKABLE void split(int tileIndex, Qt::Orientation orientation);
     Q_INVOKABLE void close(int tileIndex);
-    Q_INVOKABLE void moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal itemPos);
 
 protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
     void updatePolish() override;
 
@@ -89,12 +91,11 @@ private:
     void recreateHandles(Qt::Orientation orientation);
     Band createBand(int index, qreal position, Qt::Orientation orientation);
     std::tuple<int, int> findSplitBandByIndex(int index) const;
-    std::tuple<int, int> findMovableSplitBandByIndex(int index, Qt::Orientation orientation) const;
-    std::tuple<int, int> findMovableSplitBandByIndex(const Split &split, int index,
-                                                     Qt::Orientation orientation, int depth) const;
+    std::tuple<int, int> findSplitBandByHandleItem(const QQuickItem *item) const;
     QSizeF minimumSizeByIndex(int index) const;
     bool unlinkTileByIndex(Split &split, int index, int depth);
     void cleanTrailingEmptySplits();
+    void moveSplitBand(int splitIndex, int bandIndex, const QPointF &itemPos);
     void accumulateTiles(int splitIndex, int depth);
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);
 
@@ -103,6 +104,9 @@ private:
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
     QPointer<QQmlComponent> horizontalHandle_ = nullptr;
     QPointer<QQmlComponent> verticalHandle_ = nullptr;
+    int movingSplitIndex_ = -1;
+    int movingBandIndex_ = -1;
+    QPointF movingSplitBandGrabOffset_;
 };
 
 class TilerAttached : public QObject

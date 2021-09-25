@@ -1,3 +1,4 @@
+#include <QMouseEvent>
 #include <QPointF>
 #include <QtQml>
 #include <algorithm>
@@ -23,6 +24,8 @@ Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
     std::vector<Band> bands;
     bands.push_back({ 0, 0.0, nullptr, nullptr });
     splitMap_.push_back({ Qt::Horizontal, std::move(bands), {}, {} });
+
+    setAcceptedMouseButtons(Qt::LeftButton);
 }
 
 TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
@@ -166,32 +169,17 @@ std::tuple<int, int> Tiler::findSplitBandByIndex(int index) const
     return { -1, -1 };
 }
 
-std::tuple<int, int> Tiler::findMovableSplitBandByIndex(int index,
-                                                        Qt::Orientation orientation) const
+std::tuple<int, int> Tiler::findSplitBandByHandleItem(const QQuickItem *item) const
 {
-    return findMovableSplitBandByIndex(splitMap_.at(0), index, orientation, 0);
-}
-
-std::tuple<int, int> Tiler::findMovableSplitBandByIndex(const Split &split, int index,
-                                                        Qt::Orientation orientation,
-                                                        int depth) const
-{
-    Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
-    for (const auto &band : split.bands) {
-        const int splitIndex = static_cast<int>(&split - splitMap_.data());
-        const int bandIndex = static_cast<int>(&band - split.bands.data());
-        if (band.index == index)
-            return { splitIndex, split.orientation == orientation ? bandIndex : 0 };
-        if (band.index >= 0)
-            continue; // no subsplit
-        const auto [subSplitIndex, subBandIndex] = findMovableSplitBandByIndex(
-                splitMap_.at(static_cast<size_t>(-band.index)), index, orientation, depth + 1);
-        if (subSplitIndex < 0)
-            continue; // no subsplit matched
-        if (subBandIndex > 0)
-            return { subSplitIndex, subBandIndex }; // movable subsplit found
-        // subsplit matched but not movable, propagate this split as candidate
-        return { splitIndex, split.orientation == orientation ? bandIndex : 0 };
+    if (!item)
+        return { -1, -1 };
+    for (size_t i = 0; i < splitMap_.size(); ++i) {
+        const auto &split = splitMap_.at(i);
+        const auto p = std::find_if(split.bands.begin(), split.bands.end(),
+                                    [item](const auto &b) { return b.handleItem.get() == item; });
+        if (p == split.bands.end())
+            continue;
+        return { static_cast<int>(i), static_cast<int>(p - split.bands.begin()) };
     }
     return { -1, -1 };
 }
@@ -220,6 +208,10 @@ void Tiler::split(int tileIndex, Qt::Orientation orientation)
         qmlWarning(this) << "tile index out of range:" << tileIndex;
         return;
     }
+
+    movingSplitIndex_ = -1;
+    movingBandIndex_ = -1;
+    movingSplitBandGrabOffset_ = {};
 
     // Insert new tile and adjust indices.
     tiles_.insert(tiles_.begin() + tileIndex + 1, createTile(tileIndex + 1));
@@ -272,6 +264,10 @@ void Tiler::close(int tileIndex)
         qmlWarning(this) << "cannot close the last tile";
         return;
     }
+
+    movingSplitIndex_ = -1;
+    movingBandIndex_ = -1;
+    movingSplitBandGrabOffset_ = {};
 
     // Deallocate band of the tile to be removed.
     unlinkTileByIndex(splitMap_.at(0), tileIndex, 0);
@@ -333,19 +329,35 @@ void Tiler::cleanTrailingEmptySplits()
     splitMap_.erase(p.base(), splitMap_.end());
 }
 
-void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal itemPos)
+void Tiler::mousePressEvent(QMouseEvent *event)
 {
-    if (tileIndex < 0 || tileIndex >= static_cast<int>(tiles_.size())) {
-        qmlWarning(this) << "tile index out of range:" << tileIndex;
+    const auto *item = childAt(event->position().x(), event->position().y());
+    std::tie(movingSplitIndex_, movingBandIndex_) = findSplitBandByHandleItem(item);
+    if (movingSplitIndex_ < 0)
         return;
-    }
+    movingSplitBandGrabOffset_ = event->position()
+            - QPointF(item->x() + item->width() / 2, item->y() + item->height() / 2);
+    setKeepMouseGrab(true);
+}
 
-    const auto [splitIndex, bandIndex] = findMovableSplitBandByIndex(tileIndex, orientation);
-    if (splitIndex < 0 || bandIndex <= 0) {
-        qmlWarning(this) << "no movable edge found:" << tileIndex;
+void Tiler::mouseMoveEvent(QMouseEvent *event)
+{
+    if (movingSplitIndex_ < 0)
         return;
-    }
+    moveSplitBand(movingSplitIndex_, movingBandIndex_,
+                  event->position() - movingSplitBandGrabOffset_);
+}
 
+void Tiler::mouseReleaseEvent(QMouseEvent * /*event*/)
+{
+    movingSplitIndex_ = -1;
+    movingBandIndex_ = -1;
+    movingSplitBandGrabOffset_ = {};
+    setKeepMouseGrab(false);
+}
+
+void Tiler::moveSplitBand(int splitIndex, int bandIndex, const QPointF &itemPos)
+{
     auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
     const auto normalizedBandStartPos = [&split](const Band &band) {
         const auto &handle = band.handleItem;
@@ -379,9 +391,9 @@ void Tiler::moveTopLeftEdge(int tileIndex, Qt::Orientation orientation, qreal it
     if (minPos > maxPos)
         return;
 
-    const qreal exactPos = orientation == Qt::Horizontal
-            ? (itemPos - split.outerRect.left()) / split.outerRect.width()
-            : (itemPos - split.outerRect.top()) / split.outerRect.height();
+    const qreal exactPos = split.orientation == Qt::Horizontal
+            ? (itemPos.x() - split.outerRect.left()) / split.outerRect.width()
+            : (itemPos.y() - split.outerRect.top()) / split.outerRect.height();
     targetBand.position = std::clamp(exactPos, minPos, maxPos);
     polish();
 }
