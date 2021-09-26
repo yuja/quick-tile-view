@@ -104,6 +104,8 @@ private:
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
     QPointer<QQmlComponent> horizontalHandle_ = nullptr;
     QPointer<QQmlComponent> verticalHandle_ = nullptr;
+    qreal horizontalHandleWidth_ = 0.0;
+    qreal verticalHandleHeight_ = 0.0;
     int movingSplitIndex_ = -1;
     int movingBandIndex_ = -1;
     QPointF movingSplitBandGrabOffset_;

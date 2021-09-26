@@ -101,6 +101,11 @@ void Tiler::setVerticalHandle(QQmlComponent *handle)
 
 void Tiler::recreateHandles(Qt::Orientation orientation)
 {
+    if (orientation == Qt::Horizontal) {
+        horizontalHandleWidth_ = 0.0;
+    } else {
+        verticalHandleHeight_ = 0.0;
+    }
     for (auto &split : splitMap_) {
         if (split.orientation != orientation)
             continue;
@@ -128,6 +133,12 @@ auto Tiler::createBand(int index, qreal position, Qt::Orientation orientation) -
     if (auto item = std::unique_ptr<QQuickItem, ItemDeleter>(qobject_cast<QQuickItem *>(obj))) {
         item->setParentItem(this);
         component->completeCreate();
+        // Apply identical width/height to all handles to make the layouter simple.
+        if (orientation == Qt::Horizontal) {
+            horizontalHandleWidth_ = item->implicitWidth();
+        } else {
+            verticalHandleHeight_ = item->implicitHeight();
+        }
         return { index, position, std::move(item), std::move(context) };
     } else {
         qmlWarning(this) << "handle component does not create an item";
@@ -331,8 +342,7 @@ void Tiler::mousePressEvent(QMouseEvent *event)
     std::tie(movingSplitIndex_, movingBandIndex_) = findSplitBandByHandleItem(item);
     if (movingSplitIndex_ < 0)
         return;
-    movingSplitBandGrabOffset_ = event->position()
-            - QPointF(item->x() + item->width() / 2, item->y() + item->height() / 2);
+    movingSplitBandGrabOffset_ = event->position() - item->position();
     setKeepMouseGrab(true);
 }
 
@@ -355,41 +365,31 @@ void Tiler::mouseReleaseEvent(QMouseEvent * /*event*/)
 void Tiler::moveSplitBand(int splitIndex, int bandIndex, const QPointF &itemPos)
 {
     auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
-    const auto normalizedBandStartPos = [&split](const Band &band) {
-        const auto &handle = band.handleItem;
-        if (split.orientation == Qt::Horizontal) {
-            const qreal m = handle ? handle->implicitWidth() : 0.0;
-            return band.position - (m / 2) / split.outerRect.width();
-        } else {
-            const qreal m = handle ? handle->implicitHeight() : 0.0;
-            return band.position - (m / 2) / split.outerRect.height();
-        }
-    };
-    const auto normalizedBandSize = [this, &split](const Band &band) {
-        const auto &handle = band.handleItem;
+
+    // Extend bounds to have invisible 0th handle. See resizeTiles() for why.
+    const bool isHorizontal = split.orientation == Qt::Horizontal;
+    const qreal handleSize = isHorizontal ? horizontalHandleWidth_ : verticalHandleHeight_;
+    const qreal boundStartPos =
+            (isHorizontal ? split.outerRect.left() : split.outerRect.top()) - handleSize;
+    const qreal boundEndPos = isHorizontal ? split.outerRect.right() : split.outerRect.bottom();
+    const qreal boundSize = boundEndPos - boundStartPos;
+    const auto normalizedBandSize = [this, isHorizontal, handleSize, boundSize](const Band &band) {
         const auto min = minimumSizeByIndex(band.index);
-        if (split.orientation == Qt::Horizontal) {
-            const qreal m = handle ? handle->implicitWidth() : 0.0;
-            return (m / 2 + min.width()) / split.outerRect.width();
-        } else {
-            const qreal m = handle ? handle->implicitHeight() : 0.0;
-            return (m / 2 + min.height()) / split.outerRect.height();
-        }
+        return (handleSize + (isHorizontal ? min.width() : min.height())) / boundSize;
     };
+
     const auto &prevBand = split.bands.at(static_cast<size_t>(bandIndex - 1));
     auto &targetBand = split.bands.at(static_cast<size_t>(bandIndex));
 
     const qreal minPos = prevBand.position + normalizedBandSize(prevBand);
     const qreal nextPos = bandIndex + 1 < static_cast<int>(split.bands.size())
-            ? normalizedBandStartPos(split.bands.at(static_cast<size_t>(bandIndex + 1)))
+            ? split.bands.at(static_cast<size_t>(bandIndex + 1)).position
             : 1.0;
     const qreal maxPos = nextPos - normalizedBandSize(targetBand);
     if (minPos > maxPos)
         return;
 
-    const qreal exactPos = split.orientation == Qt::Horizontal
-            ? (itemPos.x() - split.outerRect.left()) / split.outerRect.width()
-            : (itemPos.y() - split.outerRect.top()) / split.outerRect.height();
+    const qreal exactPos = ((isHorizontal ? itemPos.x() : itemPos.y()) - boundStartPos) / boundSize;
     targetBand.position = std::clamp(exactPos, minPos, maxPos);
     polish();
 }
@@ -410,20 +410,20 @@ void Tiler::accumulateTiles(int splitIndex, int depth)
 {
     Q_ASSERT_X(depth < static_cast<int>(splitMap_.size()), __FUNCTION__, "bad recursion detected");
     auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
-    qreal totalMinimumWidth = 0.0, totalMinimumHeight = 0.0;
+    qreal totalMinimumWidth = (split.orientation == Qt::Horizontal) ? -horizontalHandleWidth_ : 0.0;
+    qreal totalMinimumHeight = (split.orientation != Qt::Horizontal) ? -verticalHandleHeight_ : 0.0;
     for (size_t i = 0; i < split.bands.size(); ++i) {
         const auto &band = split.bands.at(i);
         if (band.index < 0) {
             accumulateTiles(-band.index, depth + 1);
         }
-        const auto &handle = band.handleItem;
         const auto min = minimumSizeByIndex(band.index);
         if (split.orientation == Qt::Horizontal) {
-            totalMinimumWidth += (handle ? handle->implicitWidth() : 0.0) + min.width();
+            totalMinimumWidth += horizontalHandleWidth_ + min.width();
             totalMinimumHeight = std::max(min.height(), totalMinimumHeight);
         } else {
             totalMinimumWidth = std::max(min.width(), totalMinimumWidth);
-            totalMinimumHeight += (handle ? handle->implicitHeight() : 0.0) + min.height();
+            totalMinimumHeight += verticalHandleHeight_ + min.height();
         }
     }
     split.minimumSize = { totalMinimumWidth, totalMinimumHeight };
@@ -435,42 +435,37 @@ void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
     auto &split = splitMap_.at(static_cast<size_t>(splitIndex));
     split.outerRect = outerRect;
 
-    const qreal boundStartPos =
-            split.orientation == Qt::Horizontal ? outerRect.left() : outerRect.top();
-    const qreal boundEndPos =
-            split.orientation == Qt::Horizontal ? outerRect.right() : outerRect.bottom();
-    const auto handleSize = [&split](const Band &band) {
-        if (!band.handleItem)
-            return 0.0;
-        return split.orientation == Qt::Horizontal ? band.handleItem->implicitWidth()
-                                                   : band.handleItem->implicitHeight();
-    };
-    const auto minSize = [this, &split](const Band &band) {
-        return split.orientation == Qt::Horizontal ? minimumSizeByIndex(band.index).width()
-                                                   : minimumSizeByIndex(band.index).height();
+    // Extend bounds to have invisible 0th handle.
+    const bool isHorizontal = split.orientation == Qt::Horizontal;
+    const qreal handleSize = isHorizontal ? horizontalHandleWidth_ : verticalHandleHeight_;
+    const qreal boundStartPos = (isHorizontal ? outerRect.left() : outerRect.top()) - handleSize;
+    const qreal boundEndPos = isHorizontal ? outerRect.right() : outerRect.bottom();
+    const qreal boundSize = boundEndPos - boundStartPos;
+    const auto minSize = [this, isHorizontal](const Band &band) {
+        return isHorizontal ? minimumSizeByIndex(band.index).width()
+                            : minimumSizeByIndex(band.index).height();
     };
 
     // Calculate position and apply minimumWidth/Height from left/top to right/bottom.
     // itemPositions[n] is the left/top corner of the handle belonging to the n-th tile.
     //
-    // 0th            1st
-    // adjustedPos    adjustedPos  (= itemPositions[n])
-    // : (= exactPos) :   exactPos
-    // :              :   :
-    // +--------------+---:---+--------------+
-    // |tile          |handle |tile          |
-    // :<--------->:          :<--------->:
-    //    minSize                minSize
+    // itemPositions[0]       itemPositions[1]       itemPositions[N]
+    // +-------+--------------+-------+--------------+
+    // :       |tile          |handle |tile          |
+    // +-------:<--------->:          :<--------->:  :
+    // :       :  minSize                minSize     :
+    // :       :<------------------------------------:
+    // :                      outerRect              :
+    // :<------------------------------------------->:
+    // boundStartPos      boundSize                  boundEndPos
     std::vector<qreal> itemPositions;
     itemPositions.reserve(split.bands.size() + 1);
     qreal boundPos = boundStartPos;
     for (const auto &band : split.bands) {
-        const qreal exactPos = split.orientation == Qt::Horizontal
-                ? outerRect.left() + band.position * outerRect.width()
-                : outerRect.top() + band.position * outerRect.height();
-        const qreal adjustedPos = std::max(exactPos - handleSize(band) / 2, boundPos);
+        const qreal exactPos = boundStartPos + band.position * boundSize;
+        const qreal adjustedPos = std::max(exactPos, boundPos);
         itemPositions.push_back(adjustedPos);
-        boundPos = adjustedPos + handleSize(band) + minSize(band);
+        boundPos = adjustedPos + handleSize + minSize(band);
     }
     itemPositions.push_back(boundEndPos);
 
@@ -478,7 +473,7 @@ void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
     boundPos = boundEndPos;
     for (size_t i = split.bands.size() - 1; i > 0; --i) {
         const auto &band = split.bands.at(i);
-        boundPos -= handleSize(band) + minSize(band);
+        boundPos -= handleSize + minSize(band);
         if (itemPositions.at(i) <= boundPos)
             break;
         itemPositions.at(i) = boundPos;
@@ -488,11 +483,10 @@ void Tiler::resizeTiles(int splitIndex, const QRectF &outerRect, int depth)
         const auto &band = split.bands.at(i);
         const qreal s = itemPositions.at(i);
         const qreal e = itemPositions.at(i + 1);
-        const qreal m = handleSize(band);
-        const auto handleRect = split.orientation == Qt::Horizontal
-                ? QRectF(s, outerRect.y(), m, outerRect.height())
-                : QRectF(outerRect.x(), s, outerRect.width(), m);
-        const auto contentRect = split.orientation == Qt::Horizontal
+        const qreal m = handleSize;
+        const auto handleRect = isHorizontal ? QRectF(s, outerRect.y(), m, outerRect.height())
+                                             : QRectF(outerRect.x(), s, outerRect.width(), m);
+        const auto contentRect = isHorizontal
                 ? QRectF(s + m, outerRect.y(), e - (s + m), outerRect.height())
                 : QRectF(outerRect.x(), s + m, outerRect.width(), e - (s + m));
         if (auto &item = band.handleItem) {
