@@ -23,7 +23,14 @@ Window {
             Layout.fillWidth: true
             Layout.fillHeight: true
             delegate: Tile {
+                Tiler.minimumWidth: 5
+                Tiler.minimumHeight: 15
                 highlighted: Tiler.index === root.currentTileIndex
+                index: Tiler.index
+                closable: tiler.count > 1
+                onCloseRequested: {
+                    tiler.close(index);
+                }
                 onTapped: {
                     root.currentTileIndex = Tiler.index;
                 }

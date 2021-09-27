@@ -6,12 +6,13 @@ Item {
     id: root
 
     property bool highlighted
+    property int index
     property alias contentItem: contentItem
+    property alias closable: closeButton.enabled
     readonly property bool occupied: contentItem.children.length > 0
-    signal tapped()
 
-    Tiler.minimumWidth: 5
-    Tiler.minimumHeight: 15
+    signal closeRequested()
+    signal tapped()
 
     Rectangle {
         id: contentItem
@@ -31,21 +32,19 @@ Item {
         anchors.top: contentItem.top
         padding: 2
         color: "white"
-        text: root.Tiler.index
+        text: root.index
         background: Rectangle {
             color: "darkblue"
         }
     }
 
     Button {
+        id: closeButton
         anchors.right: contentItem.right
         anchors.top: contentItem.top
         width: 20
         height: 20
         text: "x"
-        enabled: root.Tiler.tiler.count > 1
-        onClicked: {
-            root.Tiler.tiler.close(root.Tiler.index);
-        }
+        onClicked: root.closeRequested()
     }
 }
