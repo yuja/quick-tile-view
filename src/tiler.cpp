@@ -28,12 +28,12 @@ Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
     setAcceptedMouseButtons(Qt::LeftButton);
 }
 
+Tiler::~Tiler() = default;
+
 TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
 {
     return new TilerAttached(object);
 }
-
-Tiler::~Tiler() = default;
 
 void Tiler::setDelegate(QQmlComponent *delegate)
 {

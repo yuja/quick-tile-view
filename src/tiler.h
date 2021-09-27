@@ -44,18 +44,18 @@ public:
     Q_INVOKABLE void split(int tileIndex, Qt::Orientation orientation);
     Q_INVOKABLE void close(int tileIndex);
 
+signals:
+    void delegateChanged();
+    void horizontalHandleChanged();
+    void verticalHandleChanged();
+    void countChanged();
+
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
     void updatePolish() override;
-
-signals:
-    void delegateChanged();
-    void horizontalHandleChanged();
-    void verticalHandleChanged();
-    void countChanged();
 
 private:
     class ItemDeleter
