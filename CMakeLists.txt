@@ -15,6 +15,8 @@ find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Quick REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick REQUIRED)
 
 set(PROJECT_SOURCES
+    src/flextiler.cpp
+    src/flextiler.h
     src/main.cpp
     src/tiler.cpp
     src/tiler.h

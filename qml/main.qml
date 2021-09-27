@@ -16,6 +16,25 @@ Window {
     title: qsTr("Hello World")
 
     Component {
+        id: flexTilerComponent
+        FlexTiler {
+            delegate: Tile {
+                // TODO: Tiler.minimumWidth: minimumWidth
+                // TODO: Tiler.minimumHeight: minimumHeight
+                highlighted: FlexTiler.index === root.currentTileIndex
+                index: FlexTiler.index
+                closable: false  // TODO
+                onCloseRequested: {
+                    // TODO: tiler.close(index);
+                }
+                onTapped: {
+                    root.currentTileIndex = FlexTiler.index;
+                }
+            }
+        }
+    }
+
+    Component {
         id: treeTilerComponent
         Tiler {
             id: tiler
@@ -48,7 +67,7 @@ Window {
             id: tilerLoader
             Layout.fillWidth: true
             Layout.fillHeight: true
-            sourceComponent: [treeTilerComponent][tilerTypeComboBox.currentIndex]
+            sourceComponent: [flexTilerComponent, treeTilerComponent][tilerTypeComboBox.currentIndex]
         }
 
         Pane {
@@ -67,7 +86,7 @@ Window {
                     ComboBox {
                         id: tilerTypeComboBox
                         Layout.preferredWidth: 80
-                        model: ["tree"]
+                        model: ["flex", "tree"]
                     }
 
                     Label { text: "tile" }
