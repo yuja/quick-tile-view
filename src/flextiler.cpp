@@ -1,6 +1,7 @@
 #include <QtQml>
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include "flextiler.h"
 
 namespace {
@@ -83,6 +84,44 @@ QQuickItem *FlexTiler::itemAt(int index) const
     }
 
     return tiles_.at(static_cast<size_t>(index)).item.get();
+}
+
+void FlexTiler::split(int index, Qt::Orientation orientation, int count)
+{
+    if (index < 0 || index >= static_cast<int>(tiles_.size())) {
+        qmlWarning(this) << "tile index out of range:" << index;
+        return;
+    }
+    if (count < 2)
+        return;
+
+    // Invalidate grid of vertices, which will be recalculated later.
+    horizontalVertices_.clear();
+    horizontalVertices_.clear();
+
+    const auto srcRect = tiles_.at(static_cast<size_t>(index)).normRect;
+    const qreal w = (orientation == Qt::Horizontal ? 1.0 / count : 1.0) * srcRect.width();
+    const qreal h = (orientation == Qt::Horizontal ? 1.0 : 1.0 / count) * srcRect.height();
+    const qreal xk = orientation == Qt::Horizontal ? 1.0 : 0.0;
+    const qreal yk = orientation == Qt::Horizontal ? 0.0 : 1.0;
+
+    // Insert new tile and adjust indices.
+    tiles_.at(static_cast<size_t>(index)).normRect = { srcRect.x(), srcRect.y(), w, h };
+    std::vector<Tile> newTiles;
+    for (int i = 1; i < count; ++i) {
+        const QRectF rect(srcRect.x() + i * xk * w, srcRect.y() + i * yk * h, w, h);
+        newTiles.push_back(createTile(rect, index + i));
+    }
+    tiles_.insert(tiles_.begin() + index + 1, std::make_move_iterator(newTiles.begin()),
+                  std::make_move_iterator(newTiles.end()));
+    for (size_t i = static_cast<size_t>(index + count); i < tiles_.size(); ++i) {
+        if (auto *a = tileAttached(tiles_.at(i).item.get())) {
+            a->setIndex(static_cast<int>(i));
+        }
+    }
+
+    polish();
+    emit countChanged();
 }
 
 void FlexTiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)

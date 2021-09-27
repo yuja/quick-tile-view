@@ -30,6 +30,8 @@ public:
     int count() const;
     Q_INVOKABLE QQuickItem *itemAt(int index) const;
 
+    Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
+
 signals:
     void delegateChanged();
     void countChanged();
