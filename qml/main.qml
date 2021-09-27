@@ -8,20 +8,17 @@ Window {
     id: root
 
     property alias currentTileIndex: tileIndexSpinBox.value
+    property alias tiler: tilerLoader.item
 
     width: 640
     height: 480
     visible: true
     title: qsTr("Hello World")
 
-    RowLayout {
-        anchors.fill: parent
-
+    Component {
+        id: treeTilerComponent
         Tiler {
             id: tiler
-
-            Layout.fillWidth: true
-            Layout.fillHeight: true
             delegate: Tile {
                 Tiler.minimumWidth: minimumWidth
                 Tiler.minimumHeight: minimumHeight
@@ -42,6 +39,17 @@ Window {
                 z: 1
             }
         }
+    }
+
+    RowLayout {
+        anchors.fill: parent
+
+        Loader {
+            id: tilerLoader
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            sourceComponent: [treeTilerComponent][tilerTypeComboBox.currentIndex]
+        }
 
         Pane {
             palette.window: "#eeeeee"
@@ -55,13 +63,20 @@ Window {
                 GridLayout {
                     columns: 2
 
+                    Label { text: "type" }
+                    ComboBox {
+                        id: tilerTypeComboBox
+                        Layout.preferredWidth: 80
+                        model: ["tree"]
+                    }
+
                     Label { text: "tile" }
                     SpinBox {
                         id: tileIndexSpinBox
                         Layout.preferredWidth: 80
                         editable: true
                         from: 0
-                        to: tiler.count - 1
+                        to: root.tiler.count - 1
                     }
 
                     Label { text: "min w" }
@@ -70,9 +85,9 @@ Window {
                         editable: true
                         from: 0
                         to: 1000
-                        value: tiler.itemAt(root.currentTileIndex).minimumWidth
+                        value: root.tiler.itemAt(root.currentTileIndex).minimumWidth
                         onValueModified: {
-                            tiler.itemAt(root.currentTileIndex).minimumWidth = value;
+                            root.tiler.itemAt(root.currentTileIndex).minimumWidth = value;
                         }
                     }
 
@@ -82,9 +97,9 @@ Window {
                         editable: true
                         from: 0
                         to: 1000
-                        value: tiler.itemAt(root.currentTileIndex).minimumHeight
+                        value: root.tiler.itemAt(root.currentTileIndex).minimumHeight
                         onValueModified: {
-                            tiler.itemAt(root.currentTileIndex).minimumHeight = value;
+                            root.tiler.itemAt(root.currentTileIndex).minimumHeight = value;
                         }
                     }
                 }
@@ -92,14 +107,14 @@ Window {
                 Button {
                     text: "Split H"
                     onClicked: {
-                        tiler.split(tileIndexSpinBox.value, Qt.Horizontal);
+                        root.tiler.split(tileIndexSpinBox.value, Qt.Horizontal);
                     }
                 }
 
                 Button {
                     text: "Split V"
                     onClicked: {
-                        tiler.split(tileIndexSpinBox.value, Qt.Vertical);
+                        root.tiler.split(tileIndexSpinBox.value, Qt.Vertical);
                     }
                 }
 
@@ -120,8 +135,8 @@ Window {
         }
 
         onItemAdded: function(index, item) {
-            for (let i = 0; i < tiler.count; ++i) {
-                let t = tiler.itemAt(i);
+            for (let i = 0; i < root.tiler.count; ++i) {
+                let t = root.tiler.itemAt(i);
                 if (t.occupied)
                     continue;
                 item.parent = t.contentItem;
