@@ -5,6 +5,8 @@ import MyTile
 Item {
     id: root
 
+    property real minimumWidth: 5
+    property real minimumHeight: 15
     property bool highlighted
     property int index
     property alias contentItem: contentItem

@@ -23,8 +23,8 @@ Window {
             Layout.fillWidth: true
             Layout.fillHeight: true
             delegate: Tile {
-                Tiler.minimumWidth: 5
-                Tiler.minimumHeight: 15
+                Tiler.minimumWidth: minimumWidth
+                Tiler.minimumHeight: minimumHeight
                 highlighted: Tiler.index === root.currentTileIndex
                 index: Tiler.index
                 closable: tiler.count > 1
@@ -70,9 +70,9 @@ Window {
                         editable: true
                         from: 0
                         to: 1000
-                        value: tiler.itemAt(root.currentTileIndex).Tiler.minimumWidth
+                        value: tiler.itemAt(root.currentTileIndex).minimumWidth
                         onValueModified: {
-                            tiler.itemAt(root.currentTileIndex).Tiler.minimumWidth = value;
+                            tiler.itemAt(root.currentTileIndex).minimumWidth = value;
                         }
                     }
 
@@ -82,9 +82,9 @@ Window {
                         editable: true
                         from: 0
                         to: 1000
-                        value: tiler.itemAt(root.currentTileIndex).Tiler.minimumHeight
+                        value: tiler.itemAt(root.currentTileIndex).minimumHeight
                         onValueModified: {
-                            tiler.itemAt(root.currentTileIndex).Tiler.minimumHeight = value;
+                            tiler.itemAt(root.currentTileIndex).minimumHeight = value;
                         }
                     }
                 }
