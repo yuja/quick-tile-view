@@ -35,21 +35,11 @@ Window {
                     root.currentTileIndex = Tiler.index;
                 }
             }
-            horizontalHandle: Rectangle {
-                implicitWidth: 5
+            horizontalHandle: HorizontalHandle {
                 z: 1
-                color: "gray"
-                HoverHandler {
-                    cursorShape: Qt.SplitHCursor
-                }
             }
-            verticalHandle: Rectangle {
-                implicitHeight: 5
+            verticalHandle: VerticalHandle {
                 z: 1
-                color: "gray"
-                HoverHandler {
-                    cursorShape: Qt.SplitVCursor
-                }
             }
         }
 
