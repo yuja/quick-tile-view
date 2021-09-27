@@ -143,7 +143,7 @@ auto Tiler::createBand(int index, qreal position, Qt::Orientation orientation) -
     } else {
         qmlWarning(this) << "handle component does not create an item";
         delete obj;
-        return {};
+        return { index, position, {}, {} };
     }
 }
 
