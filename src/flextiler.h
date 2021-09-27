@@ -4,6 +4,7 @@
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QRectF>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -51,10 +52,20 @@ private:
         std::unique_ptr<QQmlContext> context; // may be nullptr if !item
     };
 
+    struct Vertex
+    {
+        int pixelPos;
+        int tileIndex; // -1 if intermediate point or terminator
+    };
+
     void recreateTiles();
     Tile createTile(const QRectF &normRect, int index);
+    void accumulateTiles();
+    void resizeTiles();
 
     std::vector<Tile> tiles_;
+    std::map<int, std::vector<Vertex>> horizontalVertices_; // x: {y}, updated by accumulateTiles()
+    std::map<int, std::vector<Vertex>> verticalVertices_; // y: {x}, updated by accumulateTiles()
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
 };
 
