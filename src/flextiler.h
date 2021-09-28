@@ -80,8 +80,9 @@ private:
     struct Vertex
     {
         int pixelPos;
-        int tileIndex; // -1 if intermediate point or terminator
+        int tileIndex; // -1 if terminator
         int handleSpan; // 0: invisible, >0: span n vertices
+        bool primary; // is starting vertex in orthogonal axis?
     };
 
     void recreateTiles();

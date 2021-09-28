@@ -260,13 +260,13 @@ void FlexTiler::accumulateTiles()
         const auto h0 = horizontalVertices_.lower_bound(x0);
         const auto h1 = horizontalVertices_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            p->second.push_back({ y0, p == h0 ? static_cast<int>(i) : -1, 0 });
+            p->second.push_back({ y0, static_cast<int>(i), 0, p == h0 });
         }
 
         const auto v0 = verticalVertices_.lower_bound(y0);
         const auto v1 = verticalVertices_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            p->second.push_back({ x0, p == v0 ? static_cast<int>(i) : -1, 0 });
+            p->second.push_back({ x0, static_cast<int>(i), 0, p == v0 });
         }
     }
 
@@ -274,12 +274,12 @@ void FlexTiler::accumulateTiles()
     for (auto &[x, vertices] : horizontalVertices_) {
         std::sort(vertices.begin(), vertices.end(),
                   [](const auto &a, const auto &b) { return a.pixelPos < b.pixelPos; });
-        vertices.push_back({ mapToPixelY(1.0), -1, 0 });
+        vertices.push_back({ mapToPixelY(1.0), -1, 0, false });
     }
     for (auto &[y, vertices] : verticalVertices_) {
         std::sort(vertices.begin(), vertices.end(),
                   [](const auto &a, const auto &b) { return a.pixelPos < b.pixelPos; });
-        vertices.push_back({ mapToPixelX(1.0), -1, 0 });
+        vertices.push_back({ mapToPixelX(1.0), -1, 0, false });
     }
 
     // Calculate spans of handles per axis.
@@ -322,7 +322,7 @@ void FlexTiler::resizeTiles()
         Q_ASSERT(!vertices.empty());
         for (size_t i = 0; i < vertices.size() - 1; ++i) {
             const auto &v0 = vertices.at(i);
-            if (v0.tileIndex < 0)
+            if (v0.tileIndex < 0 || !v0.primary)
                 continue;
             if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).item) {
                 const qreal m = verticalHandleHeight_;
@@ -346,7 +346,7 @@ void FlexTiler::resizeTiles()
         Q_ASSERT(!vertices.empty());
         for (size_t i = 0; i < vertices.size() - 1; ++i) {
             const auto &v0 = vertices.at(i);
-            if (v0.tileIndex < 0)
+            if (v0.tileIndex < 0 || !v0.primary)
                 continue;
             if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).item) {
                 const qreal m = horizontalHandleWidth_;
