@@ -6,6 +6,7 @@
 #include <QRectF>
 #include <map>
 #include <memory>
+#include <tuple>
 #include <vector>
 
 class FlexTilerAttached;
@@ -47,10 +48,12 @@ private:
         void operator()(QQuickItem *item) const;
     };
 
+    using UniqueItemPtr = std::unique_ptr<QQuickItem, ItemDeleter>;
+
     struct Tile
     {
         QRectF normRect;
-        std::unique_ptr<QQuickItem, ItemDeleter> item; // may be nullptr
+        UniqueItemPtr item; // may be nullptr
         std::unique_ptr<QQmlContext> context; // may be nullptr if !item
     };
 
@@ -62,6 +65,7 @@ private:
 
     void recreateTiles();
     Tile createTile(const QRectF &normRect, int index);
+    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
     void accumulateTiles();
     void resizeTiles();
 

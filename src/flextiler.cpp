@@ -45,8 +45,14 @@ void FlexTiler::recreateTiles()
 
 auto FlexTiler::createTile(const QRectF &normRect, int index) -> Tile
 {
+    auto [item, context] = createTileItem(index);
+    return { normRect, std::move(item), std::move(context) };
+}
+
+auto FlexTiler::createTileItem(int index) -> std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
+{
     if (!tileDelegate_)
-        return { normRect, {}, {} };
+        return {};
 
     // See qquicksplitview.cpp
     auto *creationContext = tileDelegate_->creationContext();
@@ -56,18 +62,18 @@ auto FlexTiler::createTile(const QRectF &normRect, int index) -> Tile
     context->setContextObject(this);
 
     auto *obj = tileDelegate_->beginCreate(context.get());
-    if (auto item = std::unique_ptr<QQuickItem, ItemDeleter>(qobject_cast<QQuickItem *>(obj))) {
+    if (auto item = UniqueItemPtr(qobject_cast<QQuickItem *>(obj))) {
         item->setParentItem(this);
         if (auto *a = tileAttached(item.get())) {
             a->setTiler(this);
             a->setIndex(index);
         }
         tileDelegate_->completeCreate();
-        return { normRect, std::move(item), std::move(context) };
+        return { std::move(item), std::move(context) };
     } else {
         qmlWarning(this) << "tile component does not create an item";
         delete obj;
-        return { normRect, {}, {} };
+        return {};
     }
 }
 
