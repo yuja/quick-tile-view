@@ -1,5 +1,6 @@
 #pragma once
 #include <QPoint>
+#include <QPointF>
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -51,6 +52,9 @@ signals:
     void countChanged();
 
 protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
     void updatePolish() override;
 
@@ -87,11 +91,24 @@ private:
         bool primary; // is starting vertex in orthogonal axis?
     };
 
+    struct AdjacentIndices
+    {
+        std::vector<int> left;
+        std::vector<int> right;
+        std::vector<int> top;
+        std::vector<int> bottom;
+    };
+
     void recreateTiles();
     Tile createTile(const QRectF &normRect, int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
     createHandleItem(Qt::Orientation orientation);
+    std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
+    void resetMovingState();
+    AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
+    QRectF calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indices) const;
+    void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &pixelPos);
     QRectF extendedOuterRect() const;
     void accumulateTiles();
     void resizeTiles();
@@ -104,6 +121,9 @@ private:
     QPointer<QQmlComponent> verticalHandle_ = nullptr;
     qreal horizontalHandleWidth_ = 0.0;
     qreal verticalHandleHeight_ = 0.0;
+    AdjacentIndices movingTiles_;
+    QRectF movablePixelRect_;
+    QPointF movingHandleGrabOffset_;
 };
 
 class FlexTilerAttached : public QObject

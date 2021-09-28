@@ -1,3 +1,4 @@
+#include <QMouseEvent>
 #include <QtQml>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,7 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
     tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, { 0, 0 }, {}, {}, {}, {}, {}, {} });
+    setAcceptedMouseButtons(Qt::LeftButton);
 }
 
 FlexTiler::~FlexTiler() = default;
@@ -156,6 +158,21 @@ QQuickItem *FlexTiler::itemAt(int index) const
     return tiles_.at(static_cast<size_t>(index)).item.get();
 }
 
+std::tuple<int, Qt::Orientations> FlexTiler::findTileByHandleItem(const QQuickItem *item) const
+{
+    if (!item)
+        return { -1, {} };
+    for (size_t i = 0; i < tiles_.size(); ++i) {
+        const auto &tile = tiles_.at(i);
+        if (tile.horizontalHandleItem.get() == item)
+            return { static_cast<int>(i), Qt::Horizontal };
+        if (tile.verticalHandleItem.get() == item)
+            return { static_cast<int>(i), Qt::Vertical };
+        // If we had a corner handle, orientations would be Qt::Horizontal | Qt::Vertical.
+    }
+    return { -1, {} };
+}
+
 void FlexTiler::split(int index, Qt::Orientation orientation, int count)
 {
     if (index < 0 || index >= static_cast<int>(tiles_.size())) {
@@ -168,6 +185,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     // Invalidate grid of vertices, which will be recalculated later.
     horizontalVertices_.clear();
     horizontalVertices_.clear();
+    resetMovingState();
 
     const auto srcRect = tiles_.at(static_cast<size_t>(index)).normRect;
     const qreal w = (orientation == Qt::Horizontal ? 1.0 / count : 1.0) * srcRect.width();
@@ -194,9 +212,183 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     emit countChanged();
 }
 
+void FlexTiler::mousePressEvent(QMouseEvent *event)
+{
+    const auto *item = childAt(event->position().x(), event->position().y());
+    const auto [index, orientations] = findTileByHandleItem(item);
+    if (index < 0)
+        return;
+
+    // Determine tiles to be moved on press because the grid may change while moving
+    // the selected handle.
+    movingTiles_ = collectAdjacentTiles(index, orientations);
+    movablePixelRect_ = calculateInnerRectOfAdjacentTiles(movingTiles_);
+    movingHandleGrabOffset_ = event->position() - item->position();
+    setKeepMouseGrab(true);
+}
+
+void FlexTiler::mouseMoveEvent(QMouseEvent *event)
+{
+    if (movingTiles_.left.empty() && movingTiles_.right.empty() && movingTiles_.top.empty()
+        && movingTiles_.bottom.empty())
+        return;
+
+    const auto rawPixelPos = event->position() - movingHandleGrabOffset_;
+    const QPointF pixelPos(
+            std::clamp(rawPixelPos.x(), movablePixelRect_.left(), movablePixelRect_.right()),
+            std::clamp(rawPixelPos.y(), movablePixelRect_.top(), movablePixelRect_.bottom()));
+    moveAdjacentTiles(movingTiles_, pixelPos);
+}
+
+void FlexTiler::mouseReleaseEvent(QMouseEvent * /*event*/)
+{
+    resetMovingState();
+    setKeepMouseGrab(false);
+}
+
+void FlexTiler::resetMovingState()
+{
+    movingTiles_ = {};
+    movablePixelRect_ = {};
+    movingHandleGrabOffset_ = {};
+}
+
+auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) const
+        -> AdjacentIndices
+{
+    const auto collect = [](const std::map<int, std::vector<Vertex>> &vertices, int key1,
+                            int pos0) -> std::tuple<std::vector<int>, std::vector<int>> {
+        // Determine the right/bottom line from the handle item, and collect tiles
+        // within the handle span.
+        const auto line1 = vertices.find(key1);
+        if (line1 == vertices.begin() || line1 == vertices.end())
+            return {};
+        const auto v1s = std::find_if(line1->second.begin(), line1->second.end(),
+                                      [pos0](const auto &v) { return v.pixelPos == pos0; });
+        if (v1s == line1->second.end())
+            return {};
+        const auto v1e = v1s + v1s->handleSpan;
+        const int pos1 = v1e->pixelPos;
+        std::vector<int> tiles1;
+        for (auto p = v1s; p != v1e; ++p) {
+            Q_ASSERT(p->tileIndex >= 0);
+            tiles1.push_back(p->tileIndex);
+        }
+
+        // Collect tiles on the adjacent left/top line within the same range.
+        const auto line0 = std::prev(line1);
+        const auto v0s = std::find_if(line0->second.begin(), line0->second.end(),
+                                      [pos0](const auto &v) { return v.pixelPos == pos0; });
+        if (v0s == line0->second.end())
+            return {};
+        const auto v0e = std::find_if(v0s, line0->second.end(),
+                                      [pos1](const auto &v) { return v.pixelPos == pos1; });
+        std::vector<int> tiles0;
+        for (auto p = v0s; p != v0e; ++p) {
+            Q_ASSERT(p->tileIndex >= 0);
+            tiles0.push_back(p->tileIndex);
+        }
+
+        return { tiles0, tiles1 };
+    };
+
+    AdjacentIndices indices;
+    const auto pos = tiles_.at(static_cast<size_t>(index)).pixelPos;
+    if (orientations & Qt::Horizontal) {
+        std::tie(indices.left, indices.right) = collect(horizontalVertices_, pos.x(), pos.y());
+    }
+    if (orientations & Qt::Vertical) {
+        std::tie(indices.top, indices.bottom) = collect(verticalVertices_, pos.y(), pos.x());
+    }
+
+    return indices;
+}
+
+QRectF FlexTiler::calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indices) const
+{
+    const auto findNextPos = [](const std::map<int, std::vector<Vertex>> &vertices, int key,
+                                int pos) -> int {
+        const auto line = vertices.find(key);
+        if (line == vertices.end())
+            return pos;
+        const auto v1 = std::find_if(line->second.begin(), line->second.end(),
+                                     [pos](const auto &v) { return v.pixelPos > pos; });
+        if (v1 == line->second.end())
+            return pos;
+        return v1->pixelPos;
+    };
+
+    const auto outerRect = extendedOuterRect();
+    qreal left = outerRect.left();
+    qreal right = outerRect.right();
+    qreal top = outerRect.top();
+    qreal bottom = outerRect.bottom();
+
+    for (const auto i : indices.left) {
+        const auto &tile = tiles_.at(static_cast<size_t>(i));
+        const int x = tile.pixelPos.x();
+        left = std::max(static_cast<qreal>(x), left);
+    }
+
+    for (const auto i : indices.right) {
+        const auto &tile = tiles_.at(static_cast<size_t>(i));
+        const int x = findNextPos(verticalVertices_, tile.pixelPos.y(), tile.pixelPos.x());
+        right = std::min(static_cast<qreal>(x), right);
+    }
+
+    for (const auto i : indices.top) {
+        const auto &tile = tiles_.at(static_cast<size_t>(i));
+        const int y = tile.pixelPos.y();
+        top = std::max(static_cast<qreal>(y), top);
+    }
+
+    for (const auto i : indices.bottom) {
+        const auto &tile = tiles_.at(static_cast<size_t>(i));
+        const int y = findNextPos(horizontalVertices_, tile.pixelPos.x(), tile.pixelPos.y());
+        bottom = std::min(static_cast<qreal>(y), bottom);
+    }
+
+    return {
+        left + horizontalHandleWidth_,
+        top + verticalHandleHeight_,
+        right - left - 2 * horizontalHandleWidth_,
+        bottom - top - 2 * verticalHandleHeight_,
+    };
+}
+
+void FlexTiler::moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &pixelPos)
+{
+    const auto outerRect = extendedOuterRect();
+    const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
+                          (pixelPos.y() - outerRect.top()) / outerRect.height());
+
+    for (const auto i : indices.left) {
+        auto &tile = tiles_.at(static_cast<size_t>(i));
+        tile.normRect.setRight(normPos.x());
+    }
+
+    for (const auto i : indices.right) {
+        auto &tile = tiles_.at(static_cast<size_t>(i));
+        tile.normRect.setLeft(normPos.x());
+    }
+
+    for (const auto i : indices.top) {
+        auto &tile = tiles_.at(static_cast<size_t>(i));
+        tile.normRect.setBottom(normPos.y());
+    }
+
+    for (const auto i : indices.bottom) {
+        auto &tile = tiles_.at(static_cast<size_t>(i));
+        tile.normRect.setTop(normPos.y());
+    }
+
+    polish();
+}
+
 void FlexTiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 {
     QQuickItem::geometryChange(newGeometry, oldGeometry);
+    resetMovingState();
     polish();
 }
 
