@@ -126,14 +126,36 @@ Window {
                 Button {
                     text: "Split H"
                     onClicked: {
-                        root.tiler.split(tileIndexSpinBox.value, Qt.Horizontal);
+                        if (splitCountSpinBox.enabled) {
+                            root.tiler.split(tileIndexSpinBox.value, Qt.Horizontal,
+                                             splitCountSpinBox.value);
+                        } else {
+                            root.tiler.split(tileIndexSpinBox.value, Qt.Horizontal);
+                        }
                     }
                 }
 
                 Button {
                     text: "Split V"
                     onClicked: {
-                        root.tiler.split(tileIndexSpinBox.value, Qt.Vertical);
+                        if (splitCountSpinBox.enabled) {
+                            root.tiler.split(tileIndexSpinBox.value, Qt.Vertical,
+                                             splitCountSpinBox.value);
+                        } else {
+                            root.tiler.split(tileIndexSpinBox.value, Qt.Vertical);
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Label { text: "n" }
+                    SpinBox {
+                        id: splitCountSpinBox
+                        Layout.preferredWidth: 80
+                        editable: true
+                        enabled: tilerTypeComboBox.currentIndex === 0
+                        from: 2
+                        to: 10
                     }
                 }
 
