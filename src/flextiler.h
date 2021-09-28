@@ -81,6 +81,7 @@ private:
     {
         int pixelPos;
         int tileIndex; // -1 if intermediate point or terminator
+        int handleSpan; // 0: invisible, >0: span n vertices
     };
 
     void recreateTiles();

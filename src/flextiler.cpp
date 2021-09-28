@@ -207,7 +207,8 @@ void FlexTiler::updatePolish()
 
 void FlexTiler::accumulateTiles()
 {
-    const QRectF outerRect({ 0.0, 0.0 }, size());
+    const QRectF outerRect(-horizontalHandleWidth_, -verticalHandleHeight_,
+                           width() + horizontalHandleWidth_, height() + verticalHandleHeight_);
     // Align to pixel border so separate borders can be connected.
     const auto mapToPixelX = [&outerRect](qreal x) {
         return static_cast<int>(std::lround(outerRect.left() + x * outerRect.width()));
@@ -259,13 +260,13 @@ void FlexTiler::accumulateTiles()
         const auto h0 = horizontalVertices_.lower_bound(x0);
         const auto h1 = horizontalVertices_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            p->second.push_back({ y0, p == h0 ? static_cast<int>(i) : -1 });
+            p->second.push_back({ y0, p == h0 ? static_cast<int>(i) : -1, 0 });
         }
 
         const auto v0 = verticalVertices_.lower_bound(y0);
         const auto v1 = verticalVertices_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            p->second.push_back({ x0, p == v0 ? static_cast<int>(i) : -1 });
+            p->second.push_back({ x0, p == v0 ? static_cast<int>(i) : -1, 0 });
         }
     }
 
@@ -273,13 +274,46 @@ void FlexTiler::accumulateTiles()
     for (auto &[x, vertices] : horizontalVertices_) {
         std::sort(vertices.begin(), vertices.end(),
                   [](const auto &a, const auto &b) { return a.pixelPos < b.pixelPos; });
-        vertices.push_back({ mapToPixelY(1.0), -1 });
+        vertices.push_back({ mapToPixelY(1.0), -1, 0 });
     }
     for (auto &[y, vertices] : verticalVertices_) {
         std::sort(vertices.begin(), vertices.end(),
                   [](const auto &a, const auto &b) { return a.pixelPos < b.pixelPos; });
-        vertices.push_back({ mapToPixelX(1.0), -1 });
+        vertices.push_back({ mapToPixelX(1.0), -1, 0 });
     }
+
+    // Calculate spans of handles per axis.
+    const auto calculateHandleSpan = [](std::map<int, std::vector<Vertex>> &vertices) {
+        if (vertices.empty())
+            return; // in case we allowed empty tiles.
+        // First line should have no handle, so skipped.
+        auto line0 = vertices.cbegin();
+        for (auto line1 = std::next(vertices.begin()); line1 != vertices.end(); ++line0, ++line1) {
+            auto v0s = line0->second.begin();
+            auto v1s = line1->second.begin();
+            Q_ASSERT(v0s != line0->second.end());
+            Q_ASSERT(v1s != line1->second.end());
+            auto v0p = std::next(v0s);
+            auto v1p = std::next(v1s);
+            while (v0p != line0->second.end() && v1p != line1->second.end()) {
+                // Handle can be isolated if two vertices of the adjacent lines meet.
+                if (v0p->pixelPos == v1p->pixelPos) {
+                    v1s->handleSpan = static_cast<int>(v1p - v1s);
+                    v0s = v0p;
+                    v1s = v1p;
+                    ++v0p;
+                    ++v1p;
+                } else if (v0p->pixelPos < v1p->pixelPos) {
+                    ++v0p;
+                } else {
+                    ++v1p;
+                }
+            }
+            Q_ASSERT(v0p == line0->second.end() && v1p == line1->second.end());
+        }
+    };
+    calculateHandleSpan(horizontalVertices_);
+    calculateHandleSpan(verticalVertices_);
 }
 
 void FlexTiler::resizeTiles()
@@ -288,12 +322,22 @@ void FlexTiler::resizeTiles()
         Q_ASSERT(!vertices.empty());
         for (size_t i = 0; i < vertices.size() - 1; ++i) {
             const auto &v0 = vertices.at(i);
-            const auto &v1 = vertices.at(i + 1);
             if (v0.tileIndex < 0)
                 continue;
             if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).item) {
-                item->setY(static_cast<qreal>(v0.pixelPos));
-                item->setHeight(static_cast<qreal>(v1.pixelPos - v0.pixelPos));
+                const qreal m = verticalHandleHeight_;
+                const auto &v1 = vertices.at(i + 1);
+                item->setY(static_cast<qreal>(v0.pixelPos) + m);
+                item->setHeight(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
+            }
+            if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).horizontalHandleItem) {
+                const qreal m = verticalHandleHeight_;
+                const auto &v1 = vertices.at(i + static_cast<size_t>(v0.handleSpan));
+                item->setVisible(v0.handleSpan > 0);
+                item->setX(static_cast<qreal>(x));
+                item->setY(static_cast<qreal>(v0.pixelPos) + m);
+                item->setWidth(horizontalHandleWidth_);
+                item->setHeight(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
             }
         }
     }
@@ -302,12 +346,22 @@ void FlexTiler::resizeTiles()
         Q_ASSERT(!vertices.empty());
         for (size_t i = 0; i < vertices.size() - 1; ++i) {
             const auto &v0 = vertices.at(i);
-            const auto &v1 = vertices.at(i + 1);
             if (v0.tileIndex < 0)
                 continue;
             if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).item) {
-                item->setX(static_cast<qreal>(v0.pixelPos));
-                item->setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos));
+                const qreal m = horizontalHandleWidth_;
+                const auto &v1 = vertices.at(i + 1);
+                item->setX(static_cast<qreal>(v0.pixelPos) + m);
+                item->setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
+            }
+            if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).verticalHandleItem) {
+                const qreal m = horizontalHandleWidth_;
+                const auto &v1 = vertices.at(i + static_cast<size_t>(v0.handleSpan));
+                item->setVisible(v0.handleSpan > 0);
+                item->setX(static_cast<qreal>(v0.pixelPos) + m);
+                item->setY(static_cast<qreal>(y));
+                item->setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
+                item->setHeight(verticalHandleHeight_);
             }
         }
     }
