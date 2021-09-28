@@ -15,7 +15,7 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
 
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
-    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {} });
+    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
 }
 
 FlexTiler::~FlexTiler() = default;
@@ -35,8 +35,28 @@ void FlexTiler::setDelegate(QQmlComponent *delegate)
     emit delegateChanged();
 }
 
+void FlexTiler::setHorizontalHandle(QQmlComponent *handle)
+{
+    if (horizontalHandle_ == handle)
+        return;
+    horizontalHandle_ = handle;
+    recreateTiles();
+    emit horizontalHandleChanged();
+}
+
+void FlexTiler::setVerticalHandle(QQmlComponent *handle)
+{
+    if (verticalHandle_ == handle)
+        return;
+    verticalHandle_ = handle;
+    recreateTiles();
+    emit verticalHandleChanged();
+}
+
 void FlexTiler::recreateTiles()
 {
+    horizontalHandleWidth_ = 0.0;
+    verticalHandleHeight_ = 0.0;
     for (size_t i = 0; i < tiles_.size(); ++i) {
         tiles_.at(i) = createTile(tiles_.at(i).normRect, static_cast<int>(i));
     }
@@ -46,7 +66,17 @@ void FlexTiler::recreateTiles()
 auto FlexTiler::createTile(const QRectF &normRect, int index) -> Tile
 {
     auto [item, context] = createTileItem(index);
-    return { normRect, std::move(item), std::move(context) };
+    auto [hHandleItem, hHandleContext] = createHandleItem(Qt::Horizontal);
+    auto [vHandleItem, vHandleContext] = createHandleItem(Qt::Vertical);
+    return {
+        normRect,
+        std::move(item),
+        std::move(context),
+        std::move(hHandleItem),
+        std::move(hHandleContext),
+        std::move(vHandleItem),
+        std::move(vHandleContext),
+    };
 }
 
 auto FlexTiler::createTileItem(int index) -> std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
@@ -72,6 +102,39 @@ auto FlexTiler::createTileItem(int index) -> std::tuple<UniqueItemPtr, std::uniq
         return { std::move(item), std::move(context) };
     } else {
         qmlWarning(this) << "tile component does not create an item";
+        delete obj;
+        return {};
+    }
+}
+
+auto FlexTiler::createHandleItem(Qt::Orientation orientation)
+        -> std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
+{
+    auto *component = (orientation == Qt::Horizontal ? horizontalHandle_ : verticalHandle_).get();
+    if (!component)
+        return {};
+
+    // See qquicksplitview.cpp
+    auto *creationContext = component->creationContext();
+    if (!creationContext)
+        creationContext = qmlContext(this);
+    auto context = std::make_unique<QQmlContext>(creationContext);
+    context->setContextObject(this);
+
+    auto *obj = component->beginCreate(context.get());
+    if (auto item = UniqueItemPtr(qobject_cast<QQuickItem *>(obj))) {
+        item->setParentItem(this);
+        item->setVisible(false);
+        component->completeCreate();
+        // Apply identical width/height to all handles to make the layouter simple.
+        if (orientation == Qt::Horizontal) {
+            horizontalHandleWidth_ = item->implicitWidth();
+        } else {
+            verticalHandleHeight_ = item->implicitHeight();
+        }
+        return { std::move(item), std::move(context) };
+    } else {
+        qmlWarning(this) << "handle component does not create an item";
         delete obj;
         return {};
     }

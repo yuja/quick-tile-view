@@ -15,6 +15,10 @@ class FlexTiler : public QQuickItem
 {
     Q_OBJECT
     Q_PROPERTY(QQmlComponent *delegate READ delegate WRITE setDelegate NOTIFY delegateChanged FINAL)
+    Q_PROPERTY(QQmlComponent *horizontalHandle READ horizontalHandle WRITE setHorizontalHandle
+                       NOTIFY horizontalHandleChanged FINAL)
+    Q_PROPERTY(QQmlComponent *verticalHandle READ verticalHandle WRITE setVerticalHandle NOTIFY
+                       verticalHandleChanged FINAL)
     Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
     QML_ATTACHED(FlexTilerAttached)
     QML_ELEMENT
@@ -28,6 +32,12 @@ public:
     QQmlComponent *delegate() { return tileDelegate_; }
     void setDelegate(QQmlComponent *delegate);
 
+    QQmlComponent *horizontalHandle() { return horizontalHandle_; }
+    void setHorizontalHandle(QQmlComponent *handle);
+
+    QQmlComponent *verticalHandle() { return verticalHandle_; }
+    void setVerticalHandle(QQmlComponent *handle);
+
     int count() const;
     Q_INVOKABLE QQuickItem *itemAt(int index) const;
 
@@ -35,6 +45,8 @@ public:
 
 signals:
     void delegateChanged();
+    void horizontalHandleChanged();
+    void verticalHandleChanged();
     void countChanged();
 
 protected:
@@ -53,8 +65,16 @@ private:
     struct Tile
     {
         QRectF normRect;
-        UniqueItemPtr item; // may be nullptr
-        std::unique_ptr<QQmlContext> context; // may be nullptr if !item
+        // Item and context may be nullptr if the corresponding component is unspecified
+        // or invalid.
+        UniqueItemPtr item;
+        std::unique_ptr<QQmlContext> context;
+        // Not all tiles need horizontal/vertical handles, but handle items are created
+        // per tile to support the maximum possibility. Unused handles are just hidden.
+        UniqueItemPtr horizontalHandleItem;
+        std::unique_ptr<QQmlContext> horizontalHandleContext;
+        UniqueItemPtr verticalHandleItem;
+        std::unique_ptr<QQmlContext> verticalHandleContext;
     };
 
     struct Vertex
@@ -66,6 +86,8 @@ private:
     void recreateTiles();
     Tile createTile(const QRectF &normRect, int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
+    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
+    createHandleItem(Qt::Orientation orientation);
     void accumulateTiles();
     void resizeTiles();
 
@@ -73,6 +95,10 @@ private:
     std::map<int, std::vector<Vertex>> horizontalVertices_; // x: {y}, updated by accumulateTiles()
     std::map<int, std::vector<Vertex>> verticalVertices_; // y: {x}, updated by accumulateTiles()
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
+    QPointer<QQmlComponent> horizontalHandle_ = nullptr;
+    QPointer<QQmlComponent> verticalHandle_ = nullptr;
+    qreal horizontalHandleWidth_ = 0.0;
+    qreal verticalHandleHeight_ = 0.0;
 };
 
 class FlexTilerAttached : public QObject

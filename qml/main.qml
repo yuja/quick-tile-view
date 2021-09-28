@@ -31,6 +31,12 @@ Window {
                     root.currentTileIndex = FlexTiler.index;
                 }
             }
+            horizontalHandle: HorizontalHandle {
+                z: 1
+            }
+            verticalHandle: VerticalHandle {
+                z: 1
+            }
         }
     }
 
