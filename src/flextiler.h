@@ -90,6 +90,7 @@ private:
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
     createHandleItem(Qt::Orientation orientation);
+    QRectF extendedOuterRect() const;
     void accumulateTiles();
     void resizeTiles();
 

@@ -205,10 +205,20 @@ void FlexTiler::updatePolish()
     resizeTiles();
 }
 
+/// Outer bounds including invisible left-top handles.
+QRectF FlexTiler::extendedOuterRect() const
+{
+    return {
+        -horizontalHandleWidth_,
+        -verticalHandleHeight_,
+        width() + horizontalHandleWidth_,
+        height() + verticalHandleHeight_,
+    };
+}
+
 void FlexTiler::accumulateTiles()
 {
-    const QRectF outerRect(-horizontalHandleWidth_, -verticalHandleHeight_,
-                           width() + horizontalHandleWidth_, height() + verticalHandleHeight_);
+    const auto outerRect = extendedOuterRect();
     // Align to pixel border so separate borders can be connected.
     const auto mapToPixelX = [&outerRect](qreal x) {
         return static_cast<int>(std::lround(outerRect.left() + x * outerRect.width()));
