@@ -15,7 +15,7 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
 
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
-    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
+    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, { 0, 0 }, {}, {}, {}, {}, {}, {} });
 }
 
 FlexTiler::~FlexTiler() = default;
@@ -70,6 +70,7 @@ auto FlexTiler::createTile(const QRectF &normRect, int index) -> Tile
     auto [vHandleItem, vHandleContext] = createHandleItem(Qt::Vertical);
     return {
         normRect,
+        { 0, 0 },
         std::move(item),
         std::move(context),
         std::move(hHandleItem),
@@ -260,7 +261,7 @@ void FlexTiler::accumulateTiles()
     //     y1: {x0, C}, {x1, -}  // C (x0..x1, y1)
     // }
     for (size_t i = 0; i < tiles_.size(); ++i) {
-        const auto &tile = tiles_.at(i);
+        auto &tile = tiles_.at(i);
         const int x0 = mapToPixelX(tile.normRect.left());
         const int x1 = mapToPixelX(tile.normRect.right());
         const int y0 = mapToPixelY(tile.normRect.top());
@@ -278,6 +279,11 @@ void FlexTiler::accumulateTiles()
         for (auto p = v0; p != v1; ++p) {
             p->second.push_back({ x0, static_cast<int>(i), 0, p == v0 });
         }
+
+        Q_ASSERT(h0->first == x0);
+        Q_ASSERT(v0->first == y0);
+        tile.pixelPos.setX(x0);
+        tile.pixelPos.setY(y0);
     }
 
     // Sort vertices and insert terminators for convenience.

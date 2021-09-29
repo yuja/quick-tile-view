@@ -1,4 +1,5 @@
 #pragma once
+#include <QPoint>
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -65,6 +66,7 @@ private:
     struct Tile
     {
         QRectF normRect;
+        QPoint pixelPos; // key to vertices map, updated by acumulateTiles()
         // Item and context may be nullptr if the corresponding component is unspecified
         // or invalid.
         UniqueItemPtr item;
