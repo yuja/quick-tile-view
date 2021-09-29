@@ -219,6 +219,10 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
     if (index < 0)
         return;
 
+    // Make sure that aligned vertices at the current resolution should never get
+    // unaligned on future geometry change.
+    alignTilesToVertices();
+
     // Determine tiles to be moved on press because the grid may change while moving
     // the selected handle.
     movingTiles_ = collectAdjacentTiles(index, orientations);
@@ -571,6 +575,42 @@ void FlexTiler::resizeTiles()
                 item->setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
                 item->setHeight(verticalHandleHeight_);
             }
+        }
+    }
+}
+
+/// Recalculates normalized rect of tiles at the current resolution.
+void FlexTiler::alignTilesToVertices()
+{
+    const auto outerRect = extendedOuterRect();
+
+    for (const auto &[x, vertices] : horizontalVertices_) {
+        Q_ASSERT(!vertices.empty());
+        for (size_t i = 0; i < vertices.size() - 1; ++i) {
+            const auto &v0 = vertices.at(i);
+            const auto &v1 = vertices.at(i + 1);
+            if (v0.tileIndex < 0 || !v0.primary)
+                continue;
+            auto &tile = tiles_.at(static_cast<size_t>(v0.tileIndex));
+            tile.normRect.setY((static_cast<qreal>(v0.pixelPos) - outerRect.top())
+                               / outerRect.height());
+            tile.normRect.setHeight(static_cast<qreal>(v1.pixelPos - v0.pixelPos)
+                                    / outerRect.height());
+        }
+    }
+
+    for (const auto &[y, vertices] : verticalVertices_) {
+        Q_ASSERT(!vertices.empty());
+        for (size_t i = 0; i < vertices.size() - 1; ++i) {
+            const auto &v0 = vertices.at(i);
+            const auto &v1 = vertices.at(i + 1);
+            if (v0.tileIndex < 0 || !v0.primary)
+                continue;
+            auto &tile = tiles_.at(static_cast<size_t>(v0.tileIndex));
+            tile.normRect.setX((static_cast<qreal>(v0.pixelPos) - outerRect.left())
+                               / outerRect.width());
+            tile.normRect.setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos)
+                                   / outerRect.width());
         }
     }
 }

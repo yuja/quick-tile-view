@@ -112,6 +112,7 @@ private:
     QRectF extendedOuterRect() const;
     void accumulateTiles();
     void resizeTiles();
+    void alignTilesToVertices();
 
     std::vector<Tile> tiles_;
     std::map<int, std::vector<Vertex>> horizontalVertices_; // x: {y}, updated by accumulateTiles()
