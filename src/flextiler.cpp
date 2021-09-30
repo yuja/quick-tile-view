@@ -212,6 +212,110 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     emit countChanged();
 }
 
+void FlexTiler::close(int index)
+{
+    if (index < 0 || index >= static_cast<int>(tiles_.size())) {
+        qmlWarning(this) << "tile index out of range:" << index;
+        return;
+    }
+
+    // TODO: extract utility function
+    const auto findNextPos = [](const VerticesMap &verticesMap, int key, int pos) -> int {
+        const auto line = verticesMap.find(key);
+        if (line == verticesMap.end())
+            return pos;
+        const auto vp = line->second.upper_bound(pos);
+        if (vp == line->second.end())
+            return pos;
+        return vp->first;
+    };
+
+    const auto collectLine = [](auto linep, int pos0, int pos1) -> std::vector<int> {
+        std::vector<int> indices;
+        auto vp = linep->second.find(pos0);
+        for (; vp != linep->second.end() && vp->first < pos1; ++vp) {
+            Q_ASSERT(vp->second.tileIndex >= 0);
+            indices.push_back(vp->second.tileIndex);
+        }
+        if (vp == linep->second.end() || vp->first > pos1)
+            return {}; // unaligned tiles
+        return indices;
+    };
+
+    const auto collectPrev = [collectLine](const VerticesMap &verticesMap, int key0, int pos0,
+                                           int pos1) -> std::vector<int> {
+        const auto linep = verticesMap.find(key0);
+        if (linep == verticesMap.begin() || linep == verticesMap.end())
+            return {};
+        return collectLine(std::prev(linep), pos0, pos1);
+    };
+
+    const auto collectNext = [collectLine](const VerticesMap &verticesMap, int key1, int pos0,
+                                           int pos1) -> std::vector<int> {
+        const auto linep = verticesMap.find(key1);
+        if (linep == verticesMap.end())
+            return {};
+        return collectLine(linep, pos0, pos1);
+    };
+
+    const auto orgNormRect = tiles_.at(static_cast<size_t>(index)).normRect;
+    const auto orgPos = tiles_.at(static_cast<size_t>(index)).pixelPos;
+    const QPoint nextPos { findNextPos(verticalVertices_, orgPos.y(), orgPos.x()),
+                           findNextPos(horizontalVertices_, orgPos.x(), orgPos.y()) };
+
+    if (const auto indices = collectPrev(horizontalVertices_, orgPos.x(), orgPos.y(), nextPos.y());
+        !indices.empty()) {
+        // Found left matches, which will be expanded to right.
+        for (const int i : indices) {
+            auto &tile = tiles_.at(static_cast<size_t>(i));
+            tile.normRect.setRight(orgNormRect.right());
+        }
+    } else if (const auto indices =
+                       collectNext(horizontalVertices_, nextPos.x(), orgPos.y(), nextPos.y());
+               !indices.empty()) {
+        // Found right matches, which will be expanded to left.
+        for (const int i : indices) {
+            auto &tile = tiles_.at(static_cast<size_t>(i));
+            tile.normRect.setLeft(orgNormRect.left());
+        }
+    } else if (const auto indices =
+                       collectPrev(verticalVertices_, orgPos.y(), orgPos.x(), nextPos.x());
+               !indices.empty()) {
+        // Found top matches, which will be expanded to bottom.
+        for (const int i : indices) {
+            auto &tile = tiles_.at(static_cast<size_t>(i));
+            tile.normRect.setBottom(orgNormRect.bottom());
+        }
+    } else if (const auto indices =
+                       collectNext(verticalVertices_, nextPos.y(), orgPos.x(), nextPos.x());
+               !indices.empty()) {
+        // Found bottom matches, which will be expanded to top.
+        for (const int i : indices) {
+            auto &tile = tiles_.at(static_cast<size_t>(i));
+            tile.normRect.setTop(orgNormRect.top());
+        }
+    } else {
+        qmlInfo(this) << "no collapsible tiles found for " << index;
+        return;
+    }
+
+    // Invalidate grid of vertices, which will be recalculated later.
+    horizontalVertices_.clear();
+    horizontalVertices_.clear();
+    resetMovingState();
+
+    // Adjust tile indices and remove it.
+    for (size_t i = static_cast<size_t>(index) + 1; i < tiles_.size(); ++i) {
+        if (auto *a = tileAttached(tiles_.at(i).item.get())) {
+            a->setIndex(static_cast<int>(i - 1));
+        }
+    }
+    tiles_.erase(tiles_.begin() + index);
+
+    polish();
+    emit countChanged();
+}
+
 void FlexTiler::mousePressEvent(QMouseEvent *event)
 {
     const auto *item = childAt(event->position().x(), event->position().y());
@@ -305,6 +409,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
 
 QRectF FlexTiler::calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indices) const
 {
+    // TODO: extract utility function
     const auto findNextPos = [](const VerticesMap &vertices, int key, int pos) -> int {
         const auto line = vertices.find(key);
         if (line == vertices.end())

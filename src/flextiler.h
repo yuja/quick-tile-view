@@ -44,6 +44,7 @@ public:
     Q_INVOKABLE QQuickItem *itemAt(int index) const;
 
     Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
+    Q_INVOKABLE void close(int index);
 
 signals:
     void delegateChanged();

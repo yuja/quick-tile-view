@@ -18,14 +18,15 @@ Window {
     Component {
         id: flexTilerComponent
         FlexTiler {
+            id: flexTiler
             delegate: Tile {
                 // TODO: Tiler.minimumWidth: minimumWidth
                 // TODO: Tiler.minimumHeight: minimumHeight
                 highlighted: FlexTiler.index === root.currentTileIndex
                 index: FlexTiler.index
-                closable: false  // TODO
+                closable: flexTiler.count > 1  // TODO: FlexTiler.closable ?
                 onCloseRequested: {
-                    // TODO: tiler.close(index);
+                    flexTiler.close(index);
                 }
                 onTapped: {
                     root.currentTileIndex = FlexTiler.index;
