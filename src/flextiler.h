@@ -87,7 +87,7 @@ private:
     {
         int pixelPos;
         int tileIndex; // -1 if terminator
-        int handleSpan; // 0: invisible, >0: span n vertices
+        int handlePixelSize; // 0: invisible, >0: span n pixels
         bool primary; // is starting vertex in orthogonal axis?
     };
 
