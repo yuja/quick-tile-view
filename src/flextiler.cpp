@@ -528,46 +528,48 @@ void FlexTiler::accumulateTiles()
 void FlexTiler::resizeTiles()
 {
     for (const auto &[x, vertices] : horizontalVertices_) {
-        Q_ASSERT(!vertices.empty());
-        for (size_t i = 0; i < vertices.size() - 1; ++i) {
-            const auto &v0 = vertices.at(i);
-            if (v0.tileIndex < 0 || !v0.primary)
+        auto v0p = vertices.begin();
+        if (v0p == vertices.end())
+            continue;
+        for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
+            if (v0p->tileIndex < 0 || !v0p->primary)
                 continue;
-            if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).item) {
+            const auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
+            if (auto &item = tile.item) {
                 const qreal m = verticalHandleHeight_;
-                const auto &v1 = vertices.at(i + 1);
-                item->setY(static_cast<qreal>(v0.pixelPos) + m);
-                item->setHeight(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
+                item->setY(static_cast<qreal>(v0p->pixelPos) + m);
+                item->setHeight(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos) - m);
             }
-            if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).horizontalHandleItem) {
+            if (auto &item = tile.horizontalHandleItem) {
                 const qreal m = verticalHandleHeight_;
-                item->setVisible(v0.handlePixelSize > 0);
+                item->setVisible(v0p->handlePixelSize > 0);
                 item->setX(static_cast<qreal>(x));
-                item->setY(static_cast<qreal>(v0.pixelPos) + m);
+                item->setY(static_cast<qreal>(v0p->pixelPos) + m);
                 item->setWidth(horizontalHandleWidth_);
-                item->setHeight(static_cast<qreal>(v0.handlePixelSize) - m);
+                item->setHeight(static_cast<qreal>(v0p->handlePixelSize) - m);
             }
         }
     }
 
     for (const auto &[y, vertices] : verticalVertices_) {
-        Q_ASSERT(!vertices.empty());
-        for (size_t i = 0; i < vertices.size() - 1; ++i) {
-            const auto &v0 = vertices.at(i);
-            if (v0.tileIndex < 0 || !v0.primary)
+        auto v0p = vertices.begin();
+        if (v0p == vertices.end())
+            continue;
+        for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
+            if (v0p->tileIndex < 0 || !v0p->primary)
                 continue;
-            if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).item) {
+            const auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
+            if (auto &item = tile.item) {
                 const qreal m = horizontalHandleWidth_;
-                const auto &v1 = vertices.at(i + 1);
-                item->setX(static_cast<qreal>(v0.pixelPos) + m);
-                item->setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos) - m);
+                item->setX(static_cast<qreal>(v0p->pixelPos) + m);
+                item->setWidth(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos) - m);
             }
-            if (auto &item = tiles_.at(static_cast<size_t>(v0.tileIndex)).verticalHandleItem) {
+            if (auto &item = tile.verticalHandleItem) {
                 const qreal m = horizontalHandleWidth_;
-                item->setVisible(v0.handlePixelSize > 0);
-                item->setX(static_cast<qreal>(v0.pixelPos) + m);
+                item->setVisible(v0p->handlePixelSize > 0);
+                item->setX(static_cast<qreal>(v0p->pixelPos) + m);
                 item->setY(static_cast<qreal>(y));
-                item->setWidth(static_cast<qreal>(v0.handlePixelSize) - m);
+                item->setWidth(static_cast<qreal>(v0p->handlePixelSize) - m);
                 item->setHeight(verticalHandleHeight_);
             }
         }
@@ -580,31 +582,31 @@ void FlexTiler::alignTilesToVertices()
     const auto outerRect = extendedOuterRect();
 
     for (const auto &[x, vertices] : horizontalVertices_) {
-        Q_ASSERT(!vertices.empty());
-        for (size_t i = 0; i < vertices.size() - 1; ++i) {
-            const auto &v0 = vertices.at(i);
-            const auto &v1 = vertices.at(i + 1);
-            if (v0.tileIndex < 0 || !v0.primary)
+        auto v0p = vertices.begin();
+        if (v0p == vertices.end())
+            continue;
+        for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
+            if (v0p->tileIndex < 0 || !v0p->primary)
                 continue;
-            auto &tile = tiles_.at(static_cast<size_t>(v0.tileIndex));
-            tile.normRect.setY((static_cast<qreal>(v0.pixelPos) - outerRect.top())
+            auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
+            tile.normRect.setY((static_cast<qreal>(v0p->pixelPos) - outerRect.top())
                                / outerRect.height());
-            tile.normRect.setHeight(static_cast<qreal>(v1.pixelPos - v0.pixelPos)
+            tile.normRect.setHeight(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos)
                                     / outerRect.height());
         }
     }
 
     for (const auto &[y, vertices] : verticalVertices_) {
-        Q_ASSERT(!vertices.empty());
-        for (size_t i = 0; i < vertices.size() - 1; ++i) {
-            const auto &v0 = vertices.at(i);
-            const auto &v1 = vertices.at(i + 1);
-            if (v0.tileIndex < 0 || !v0.primary)
+        auto v0p = vertices.begin();
+        if (v0p == vertices.end())
+            continue;
+        for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
+            if (v0p->tileIndex < 0 || !v0p->primary)
                 continue;
-            auto &tile = tiles_.at(static_cast<size_t>(v0.tileIndex));
-            tile.normRect.setX((static_cast<qreal>(v0.pixelPos) - outerRect.left())
+            auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
+            tile.normRect.setX((static_cast<qreal>(v0p->pixelPos) - outerRect.left())
                                / outerRect.width());
-            tile.normRect.setWidth(static_cast<qreal>(v1.pixelPos - v0.pixelPos)
+            tile.normRect.setWidth(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos)
                                    / outerRect.width());
         }
     }
