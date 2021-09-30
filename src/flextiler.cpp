@@ -260,34 +260,32 @@ void FlexTiler::resetMovingState()
 auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) const
         -> AdjacentIndices
 {
-    const auto collect = [](const std::map<int, std::vector<Vertex>> &vertices, int key1,
+    const auto collect = [](const VerticesMap &vertices, int key1,
                             int pos0) -> std::tuple<std::vector<int>, std::vector<int>> {
         // Determine the right/bottom line from the handle item, and collect tiles
         // within the handle span.
         const auto line1 = vertices.find(key1);
         if (line1 == vertices.begin() || line1 == vertices.end())
             return {};
-        const auto v1s = std::find_if(line1->second.begin(), line1->second.end(),
-                                      [pos0](const auto &v) { return v.pixelPos == pos0; });
+        const auto v1s = line1->second.find(pos0);
         if (v1s == line1->second.end())
             return {};
-        const int pos1 = pos0 + v1s->handlePixelSize;
+        const int pos1 = pos0 + v1s->second.handlePixelSize;
         std::vector<int> tiles1;
-        for (auto p = v1s; p != line1->second.end() && p->pixelPos < pos1; ++p) {
-            Q_ASSERT(p->tileIndex >= 0);
-            tiles1.push_back(p->tileIndex);
+        for (auto p = v1s; p != line1->second.end() && p->first < pos1; ++p) {
+            Q_ASSERT(p->second.tileIndex >= 0);
+            tiles1.push_back(p->second.tileIndex);
         }
 
         // Collect tiles on the adjacent left/top line within the same range.
         const auto line0 = std::prev(line1);
-        const auto v0s = std::find_if(line0->second.begin(), line0->second.end(),
-                                      [pos0](const auto &v) { return v.pixelPos == pos0; });
+        const auto v0s = line0->second.find(pos0);
         if (v0s == line0->second.end())
             return {};
         std::vector<int> tiles0;
-        for (auto p = v0s; p != line0->second.end() && p->pixelPos < pos1; ++p) {
-            Q_ASSERT(p->tileIndex >= 0);
-            tiles0.push_back(p->tileIndex);
+        for (auto p = v0s; p != line0->second.end() && p->first < pos1; ++p) {
+            Q_ASSERT(p->second.tileIndex >= 0);
+            tiles0.push_back(p->second.tileIndex);
         }
 
         return { tiles0, tiles1 };
@@ -307,16 +305,14 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
 
 QRectF FlexTiler::calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indices) const
 {
-    const auto findNextPos = [](const std::map<int, std::vector<Vertex>> &vertices, int key,
-                                int pos) -> int {
+    const auto findNextPos = [](const VerticesMap &vertices, int key, int pos) -> int {
         const auto line = vertices.find(key);
         if (line == vertices.end())
             return pos;
-        const auto v1 = std::find_if(line->second.begin(), line->second.end(),
-                                     [pos](const auto &v) { return v.pixelPos > pos; });
-        if (v1 == line->second.end())
+        const auto v1p = line->second.upper_bound(pos);
+        if (v1p == line->second.end())
             return pos;
-        return v1->pixelPos;
+        return v1p->first;
     };
 
     const auto outerRect = extendedOuterRect();
@@ -464,13 +460,15 @@ void FlexTiler::accumulateTiles()
         const auto h0 = horizontalVertices_.lower_bound(x0);
         const auto h1 = horizontalVertices_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            p->second.push_back({ y0, static_cast<int>(i), 0, p == h0 });
+            // TODO: deal with low pixel resolution and zero-sized tile
+            p->second.insert({ y0, { static_cast<int>(i), 0, p == h0 } });
         }
 
         const auto v0 = verticalVertices_.lower_bound(y0);
         const auto v1 = verticalVertices_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            p->second.push_back({ x0, static_cast<int>(i), 0, p == v0 });
+            // TODO: deal with low pixel resolution and zero-sized tile
+            p->second.insert({ x0, { static_cast<int>(i), 0, p == v0 } });
         }
 
         Q_ASSERT(h0->first == x0);
@@ -479,20 +477,18 @@ void FlexTiler::accumulateTiles()
         tile.pixelPos.setY(y0);
     }
 
-    // Sort vertices and insert terminators for convenience.
+    // Insert terminators for convenience.
     for (auto &[x, vertices] : horizontalVertices_) {
-        std::sort(vertices.begin(), vertices.end(),
-                  [](const auto &a, const auto &b) { return a.pixelPos < b.pixelPos; });
-        vertices.push_back({ mapToPixelY(1.0), -1, 0, false });
+        // TODO: deal with low pixel resolution and zero-sized tile
+        vertices.insert({ mapToPixelY(1.0), { -1, 0, false } });
     }
     for (auto &[y, vertices] : verticalVertices_) {
-        std::sort(vertices.begin(), vertices.end(),
-                  [](const auto &a, const auto &b) { return a.pixelPos < b.pixelPos; });
-        vertices.push_back({ mapToPixelX(1.0), -1, 0, false });
+        // TODO: deal with low pixel resolution and zero-sized tile
+        vertices.insert({ mapToPixelX(1.0), { -1, 0, false } });
     }
 
     // Calculate spans of handles per axis.
-    const auto calculateHandleSpan = [](std::map<int, std::vector<Vertex>> &vertices) {
+    const auto calculateHandleSpan = [](VerticesMap &vertices) {
         if (vertices.empty())
             return; // in case we allowed empty tiles.
         // First line should have no handle, so skipped.
@@ -506,13 +502,13 @@ void FlexTiler::accumulateTiles()
             auto v1p = std::next(v1s);
             while (v0p != line0->second.end() && v1p != line1->second.end()) {
                 // Handle can be isolated if two vertices of the adjacent lines meet.
-                if (v0p->pixelPos == v1p->pixelPos) {
-                    v1s->handlePixelSize = v1p->pixelPos - v1s->pixelPos;
+                if (v0p->first == v1p->first) {
+                    v1s->second.handlePixelSize = v1p->first - v1s->first;
                     v0s = v0p;
                     v1s = v1p;
                     ++v0p;
                     ++v1p;
-                } else if (v0p->pixelPos < v1p->pixelPos) {
+                } else if (v0p->first < v1p->first) {
                     ++v0p;
                 } else {
                     ++v1p;
@@ -532,21 +528,21 @@ void FlexTiler::resizeTiles()
         if (v0p == vertices.end())
             continue;
         for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->tileIndex < 0 || !v0p->primary)
+            if (v0p->second.tileIndex < 0 || !v0p->second.primary)
                 continue;
-            const auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
+            const auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
             if (auto &item = tile.item) {
                 const qreal m = verticalHandleHeight_;
-                item->setY(static_cast<qreal>(v0p->pixelPos) + m);
-                item->setHeight(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos) - m);
+                item->setY(static_cast<qreal>(v0p->first) + m);
+                item->setHeight(static_cast<qreal>(v1p->first - v0p->first) - m);
             }
             if (auto &item = tile.horizontalHandleItem) {
                 const qreal m = verticalHandleHeight_;
-                item->setVisible(v0p->handlePixelSize > 0);
+                item->setVisible(v0p->second.handlePixelSize > 0);
                 item->setX(static_cast<qreal>(x));
-                item->setY(static_cast<qreal>(v0p->pixelPos) + m);
+                item->setY(static_cast<qreal>(v0p->first) + m);
                 item->setWidth(horizontalHandleWidth_);
-                item->setHeight(static_cast<qreal>(v0p->handlePixelSize) - m);
+                item->setHeight(static_cast<qreal>(v0p->second.handlePixelSize) - m);
             }
         }
     }
@@ -556,20 +552,20 @@ void FlexTiler::resizeTiles()
         if (v0p == vertices.end())
             continue;
         for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->tileIndex < 0 || !v0p->primary)
+            if (v0p->second.tileIndex < 0 || !v0p->second.primary)
                 continue;
-            const auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
+            const auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
             if (auto &item = tile.item) {
                 const qreal m = horizontalHandleWidth_;
-                item->setX(static_cast<qreal>(v0p->pixelPos) + m);
-                item->setWidth(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos) - m);
+                item->setX(static_cast<qreal>(v0p->first) + m);
+                item->setWidth(static_cast<qreal>(v1p->first - v0p->first) - m);
             }
             if (auto &item = tile.verticalHandleItem) {
                 const qreal m = horizontalHandleWidth_;
-                item->setVisible(v0p->handlePixelSize > 0);
-                item->setX(static_cast<qreal>(v0p->pixelPos) + m);
+                item->setVisible(v0p->second.handlePixelSize > 0);
+                item->setX(static_cast<qreal>(v0p->first) + m);
                 item->setY(static_cast<qreal>(y));
-                item->setWidth(static_cast<qreal>(v0p->handlePixelSize) - m);
+                item->setWidth(static_cast<qreal>(v0p->second.handlePixelSize) - m);
                 item->setHeight(verticalHandleHeight_);
             }
         }
@@ -579,6 +575,10 @@ void FlexTiler::resizeTiles()
 /// Recalculates normalized rect of tiles at the current resolution.
 void FlexTiler::alignTilesToVertices()
 {
+    // TODO: Maybe we'd better off using fixed grid resolution. Even though it may
+    // disagree with pixels, it's hard to deal with unstable grid alignment.
+    // alignTilesToVertices();
+
     const auto outerRect = extendedOuterRect();
 
     for (const auto &[x, vertices] : horizontalVertices_) {
@@ -586,12 +586,12 @@ void FlexTiler::alignTilesToVertices()
         if (v0p == vertices.end())
             continue;
         for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->tileIndex < 0 || !v0p->primary)
+            if (v0p->second.tileIndex < 0 || !v0p->second.primary)
                 continue;
-            auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
-            tile.normRect.setY((static_cast<qreal>(v0p->pixelPos) - outerRect.top())
+            auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
+            tile.normRect.setY((static_cast<qreal>(v0p->first) - outerRect.top())
                                / outerRect.height());
-            tile.normRect.setHeight(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos)
+            tile.normRect.setHeight(static_cast<qreal>(v1p->first - v0p->first)
                                     / outerRect.height());
         }
     }
@@ -601,13 +601,12 @@ void FlexTiler::alignTilesToVertices()
         if (v0p == vertices.end())
             continue;
         for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->tileIndex < 0 || !v0p->primary)
+            if (v0p->second.tileIndex < 0 || !v0p->second.primary)
                 continue;
-            auto &tile = tiles_.at(static_cast<size_t>(v0p->tileIndex));
-            tile.normRect.setX((static_cast<qreal>(v0p->pixelPos) - outerRect.left())
+            auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
+            tile.normRect.setX((static_cast<qreal>(v0p->first) - outerRect.left())
                                / outerRect.width());
-            tile.normRect.setWidth(static_cast<qreal>(v1p->pixelPos - v0p->pixelPos)
-                                   / outerRect.width());
+            tile.normRect.setWidth(static_cast<qreal>(v1p->first - v0p->first) / outerRect.width());
         }
     }
 }

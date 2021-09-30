@@ -85,11 +85,12 @@ private:
 
     struct Vertex
     {
-        int pixelPos;
         int tileIndex; // -1 if terminator
         int handlePixelSize; // 0: invisible, >0: span n pixels
         bool primary; // is starting vertex in orthogonal axis?
     };
+
+    using VerticesMap = std::map<int, std::map<int, Vertex>>; // x: {y: v} or y: {x: v}
 
     struct AdjacentIndices
     {
@@ -115,8 +116,8 @@ private:
     void alignTilesToVertices();
 
     std::vector<Tile> tiles_;
-    std::map<int, std::vector<Vertex>> horizontalVertices_; // x: {y}, updated by accumulateTiles()
-    std::map<int, std::vector<Vertex>> verticalVertices_; // y: {x}, updated by accumulateTiles()
+    VerticesMap horizontalVertices_; // x: {y: v}, updated by accumulateTiles()
+    VerticesMap verticalVertices_; // y: {x: v}, updated by accumulateTiles()
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
     QPointer<QQmlComponent> horizontalHandle_ = nullptr;
     QPointer<QQmlComponent> verticalHandle_ = nullptr;
