@@ -429,15 +429,15 @@ void FlexTiler::accumulateTiles()
 
     // Map tiles to vertices per axis
     //
-    //       x0  xm  x1
-    //        '   '   '
-    //            |
-    // y0- ---o---+---o---
-    //        |       |
-    // ym- ---+   A   |
-    //        |       | B
-    // y1-    o-------+
-    //        |   C   |
+    //       x0  xm  x1          horizontalVertices  verticalVertices
+    //        '   '   '          x0  xm  x1
+    //            |               '   '   '
+    // y0- ---o---+---o---        A   +   B          y0- A-------B---
+    //        |       |           |   :   |
+    // ym- ---+   A   |           |   :   |          ym- +~~~~~~~+~~~
+    //        |       | B         |   :   |
+    // y1-    o-------+           C   +   |          y1- C-------+~~~
+    //        |   C   |           |   :   |
     //
     // horizontalVertices {      // describes vertical lines made by horizontal splits
     //     x0: {y0, A}, {y1, C}  // A (x0, y0..y1), C (x0, y1..end)
