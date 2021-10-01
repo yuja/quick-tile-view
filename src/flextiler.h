@@ -89,6 +89,7 @@ private:
         int tileIndex; // -1 if terminator
         int handlePixelSize; // 0: invisible, >0: span n pixels
         bool primary; // is starting vertex in orthogonal axis?
+        bool collapsible; // can any of the adjacent tiles be expanded to fill this cell?
     };
 
     using VerticesMap = std::map<int, std::map<int, Vertex>>; // x: {y: v} or y: {x: v}
@@ -134,6 +135,7 @@ class FlexTilerAttached : public QObject
     Q_OBJECT
     Q_PROPERTY(FlexTiler *tiler READ tiler NOTIFY tilerChanged FINAL)
     Q_PROPERTY(int index READ index NOTIFY indexChanged FINAL)
+    Q_PROPERTY(bool closable READ closable NOTIFY closableChanged FINAL)
 
 public:
     explicit FlexTilerAttached(QObject *parent = nullptr);
@@ -144,11 +146,16 @@ public:
     int index() const { return index_; }
     void setIndex(int index);
 
+    bool closable() const { return closable_; }
+    void setClosable(bool closable);
+
 signals:
     void tilerChanged();
     void indexChanged();
+    void closableChanged();
 
 private:
     QPointer<FlexTiler> tiler_ = nullptr;
     int index_ = -1;
+    bool closable_ = false;
 };

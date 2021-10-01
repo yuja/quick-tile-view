@@ -24,7 +24,7 @@ Window {
                 // TODO: Tiler.minimumHeight: minimumHeight
                 highlighted: FlexTiler.index === root.currentTileIndex
                 index: FlexTiler.index
-                closable: flexTiler.count > 1  // TODO: FlexTiler.closable ?
+                closable: FlexTiler.closable
                 onCloseRequested: {
                     flexTiler.close(index);
                 }
