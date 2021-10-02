@@ -330,7 +330,7 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
     // Determine tiles to be moved on press because the grid may change while moving
     // the selected handle.
     movingTiles_ = collectAdjacentTiles(index, orientations);
-    movablePixelRect_ = calculateInnerRectOfAdjacentTiles(movingTiles_);
+    movablePixelRect_ = calculateMovableRect(index, movingTiles_);
     movingHandleGrabOffset_ = event->position() - item->position();
     setKeepMouseGrab(true);
 }
@@ -339,6 +339,8 @@ void FlexTiler::mouseMoveEvent(QMouseEvent *event)
 {
     if (movingTiles_.left.empty() && movingTiles_.right.empty() && movingTiles_.top.empty()
         && movingTiles_.bottom.empty())
+        return;
+    if (movablePixelRect_.isEmpty())
         return;
 
     const auto rawPixelPos = event->position() - movingHandleGrabOffset_;
@@ -407,7 +409,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
     return indices;
 }
 
-QRectF FlexTiler::calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indices) const
+QRectF FlexTiler::calculateMovableRect(int index, const AdjacentIndices &adjacentIndices) const
 {
     // TODO: extract utility function
     const auto findNextPos = [](const VerticesMap &vertices, int key, int pos) -> int {
@@ -420,41 +422,51 @@ QRectF FlexTiler::calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indic
         return v1p->first;
     };
 
+    const auto minimumTileWidth = [](const Tile &tile) -> qreal {
+        const auto *a = tileAttached(tile.item.get());
+        return a ? a->minimumWidth() : 0.0;
+    };
+    const auto minimumTileHeight = [](const Tile &tile) -> qreal {
+        const auto *a = tileAttached(tile.item.get());
+        return a ? a->minimumHeight() : 0.0;
+    };
+
     const auto outerRect = extendedOuterRect();
     qreal left = outerRect.left();
     qreal right = outerRect.right();
     qreal top = outerRect.top();
     qreal bottom = outerRect.bottom();
 
-    for (const auto i : indices.left) {
+    for (const auto i : adjacentIndices.left) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
         const int x = tile.pixelPos.x();
-        left = std::max(static_cast<qreal>(x), left);
+        left = std::max(static_cast<qreal>(x) + minimumTileWidth(tile), left);
     }
 
-    for (const auto i : indices.right) {
+    for (const auto i : adjacentIndices.right) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
         const int x = findNextPos(verticalVertices_, tile.pixelPos.y(), tile.pixelPos.x());
         right = std::min(static_cast<qreal>(x), right);
     }
 
-    for (const auto i : indices.top) {
+    for (const auto i : adjacentIndices.top) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
         const int y = tile.pixelPos.y();
-        top = std::max(static_cast<qreal>(y), top);
+        top = std::max(static_cast<qreal>(y) + minimumTileHeight(tile), top);
     }
 
-    for (const auto i : indices.bottom) {
+    for (const auto i : adjacentIndices.bottom) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
         const int y = findNextPos(horizontalVertices_, tile.pixelPos.x(), tile.pixelPos.y());
         bottom = std::min(static_cast<qreal>(y), bottom);
     }
 
+    const auto &targetTile = tiles_.at(static_cast<size_t>(index));
     return {
         left + horizontalHandleWidth_,
         top + verticalHandleHeight_,
-        right - left - 2 * horizontalHandleWidth_,
-        bottom - top - 2 * verticalHandleHeight_,
+        right - left - 2 * horizontalHandleWidth_ - minimumTileWidth(targetTile),
+        bottom - top - 2 * verticalHandleHeight_ - minimumTileHeight(targetTile),
     };
 }
 
@@ -591,6 +603,9 @@ void FlexTiler::accumulateTiles()
         // TODO: deal with low pixel resolution and zero-sized tile
         vertices.insert({ mapToPixelX(1.0), { -1, 0, false, false } });
     }
+
+    // TODO: fix up pixel size per minimumWidth/Height if possible; may be need to
+    // recalculate the grid?
 
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
     const auto calculateAdjacentRelation = [](VerticesMap &vertices) {
@@ -778,6 +793,31 @@ void FlexTilerAttached::setIndex(int index)
         return;
     index_ = index;
     emit indexChanged();
+}
+
+void FlexTilerAttached::setMinimumWidth(qreal width)
+{
+    if (qFuzzyCompare(minimumWidth_, width))
+        return;
+    minimumWidth_ = width;
+    requestPolish();
+    emit minimumWidthChanged();
+}
+
+void FlexTilerAttached::setMinimumHeight(qreal height)
+{
+    if (qFuzzyCompare(minimumHeight_, height))
+        return;
+    minimumHeight_ = height;
+    requestPolish();
+    emit minimumHeightChanged();
+}
+
+void FlexTilerAttached::requestPolish()
+{
+    if (!tiler_)
+        return;
+    tiler_->polish();
 }
 
 void FlexTilerAttached::setClosable(bool closable)

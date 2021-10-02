@@ -20,8 +20,8 @@ Window {
         FlexTiler {
             id: flexTiler
             delegate: Tile {
-                // TODO: Tiler.minimumWidth: minimumWidth
-                // TODO: Tiler.minimumHeight: minimumHeight
+                FlexTiler.minimumWidth: minimumWidth
+                FlexTiler.minimumHeight: minimumHeight
                 highlighted: FlexTiler.index === root.currentTileIndex
                 index: FlexTiler.index
                 closable: FlexTiler.closable

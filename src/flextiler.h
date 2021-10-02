@@ -110,7 +110,7 @@ private:
     std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
-    QRectF calculateInnerRectOfAdjacentTiles(const AdjacentIndices &indices) const;
+    QRectF calculateMovableRect(int index, const AdjacentIndices &adjacentIndices) const;
     void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &pixelPos);
     QRectF extendedOuterRect() const;
     void accumulateTiles();
@@ -135,6 +135,10 @@ class FlexTilerAttached : public QObject
     Q_OBJECT
     Q_PROPERTY(FlexTiler *tiler READ tiler NOTIFY tilerChanged FINAL)
     Q_PROPERTY(int index READ index NOTIFY indexChanged FINAL)
+    Q_PROPERTY(qreal minimumWidth READ minimumWidth WRITE setMinimumWidth NOTIFY minimumWidthChanged
+                       FINAL)
+    Q_PROPERTY(qreal minimumHeight READ minimumHeight WRITE setMinimumHeight NOTIFY
+                       minimumHeightChanged FINAL)
     Q_PROPERTY(bool closable READ closable NOTIFY closableChanged FINAL)
 
 public:
@@ -146,16 +150,28 @@ public:
     int index() const { return index_; }
     void setIndex(int index);
 
+    qreal minimumWidth() const { return minimumWidth_; }
+    void setMinimumWidth(qreal width);
+
+    qreal minimumHeight() const { return minimumHeight_; }
+    void setMinimumHeight(qreal height);
+
     bool closable() const { return closable_; }
     void setClosable(bool closable);
 
 signals:
     void tilerChanged();
     void indexChanged();
+    void minimumWidthChanged();
+    void minimumHeightChanged();
     void closableChanged();
 
 private:
+    void requestPolish();
+
     QPointer<FlexTiler> tiler_ = nullptr;
     int index_ = -1;
+    qreal minimumWidth_ = 0.0;
+    qreal minimumHeight_ = 0.0;
     bool closable_ = false;
 };
