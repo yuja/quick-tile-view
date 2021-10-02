@@ -162,7 +162,7 @@ Window {
                         editable: true
                         enabled: tilerTypeComboBox.currentIndex === 0
                         from: 2
-                        to: 10
+                        to: 100
                     }
                 }
 
