@@ -16,7 +16,7 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
 
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
-    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
+    tiles_.push_back({ { 0.0, 0.0 }, { 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
     setAcceptedMouseButtons(Qt::LeftButton);
 }
 
@@ -60,18 +60,21 @@ void FlexTiler::recreateTiles()
     horizontalHandlePixelWidth_ = 0.0;
     verticalHandlePixelHeight_ = 0.0;
     for (size_t i = 0; i < tiles_.size(); ++i) {
-        tiles_.at(i) = createTile(tiles_.at(i).normRect, static_cast<int>(i));
+        auto &tile = tiles_.at(i);
+        tile = createTile(tile.normTopLeft, tile.normBottomRight, static_cast<int>(i));
     }
     polish();
 }
 
-auto FlexTiler::createTile(const QRectF &normRect, int index) -> Tile
+auto FlexTiler::createTile(const QPointF &normTopLeft, const QPointF &normBottomRight, int index)
+        -> Tile
 {
     auto [item, context] = createTileItem(index);
     auto [hHandleItem, hHandleContext] = createHandleItem(Qt::Horizontal);
     auto [vHandleItem, vHandleContext] = createHandleItem(Qt::Vertical);
     return {
-        normRect,
+        normTopLeft,
+        normBottomRight,
         std::move(item),
         std::move(context),
         std::move(hHandleItem),
@@ -186,19 +189,22 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     horizontalVertices_.clear();
     resetMovingState();
 
-    const auto srcRect = tiles_.at(static_cast<size_t>(index)).normRect;
-    const qreal w = (orientation == Qt::Horizontal ? 1.0 / count : 1.0) * srcRect.width();
-    const qreal h = (orientation == Qt::Horizontal ? 1.0 : 1.0 / count) * srcRect.height();
+    const auto sp0 = tiles_.at(static_cast<size_t>(index)).normTopLeft;
+    const auto sp1 = tiles_.at(static_cast<size_t>(index)).normBottomRight;
+    const qreal w = (orientation == Qt::Horizontal ? 1.0 / count : 1.0) * (sp1.x() - sp0.x());
+    const qreal h = (orientation == Qt::Horizontal ? 1.0 : 1.0 / count) * (sp1.y() - sp0.y());
     const qreal xk = orientation == Qt::Horizontal ? 1.0 : 0.0;
     const qreal yk = orientation == Qt::Horizontal ? 0.0 : 1.0;
 
     // Insert new tile and adjust indices.
-    tiles_.at(static_cast<size_t>(index)).normRect = { srcRect.x(), srcRect.y(), w, h };
+    // TODO: preserve original (x, y) value if unchanged
+    tiles_.at(static_cast<size_t>(index)).normBottomRight = { sp0.x() + w, sp0.y() + h };
     std::vector<Tile> newTiles;
     for (int i = 1; i < count; ++i) {
         // TODO: find closest (x, y) key from vertices map in pixel resolution
-        const QRectF rect(srcRect.x() + i * xk * w, srcRect.y() + i * yk * h, w, h);
-        newTiles.push_back(createTile(rect, index + i));
+        const qreal x0 = sp0.x() + i * xk * w;
+        const qreal y0 = sp0.y() + i * yk * h;
+        newTiles.push_back(createTile({ x0, y0 }, { x0 + w, y0 + h }, index + i));
     }
     tiles_.insert(tiles_.begin() + index + 1, std::make_move_iterator(newTiles.begin()),
                   std::make_move_iterator(newTiles.end()));
@@ -258,7 +264,7 @@ void FlexTiler::close(int index)
         return collectLine(linep, pos0, pos1);
     };
 
-    const QPointF orgPos = tiles_.at(static_cast<size_t>(index)).normRect.topLeft();
+    const QPointF orgPos = tiles_.at(static_cast<size_t>(index)).normTopLeft;
     const QPointF nextPos { findNextPos(verticalVertices_, orgPos.y(), orgPos.x()),
                             findNextPos(horizontalVertices_, orgPos.x(), orgPos.y()) };
 
@@ -267,7 +273,7 @@ void FlexTiler::close(int index)
         // Found left matches, which will be expanded to right.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setRight(nextPos.x());
+            tile.normBottomRight.setX(nextPos.x());
         }
     } else if (const auto indices =
                        collectNext(horizontalVertices_, nextPos.x(), orgPos.y(), nextPos.y());
@@ -275,7 +281,7 @@ void FlexTiler::close(int index)
         // Found right matches, which will be expanded to left.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setLeft(orgPos.x());
+            tile.normTopLeft.setX(orgPos.x());
         }
     } else if (const auto indices =
                        collectPrev(verticalVertices_, orgPos.y(), orgPos.x(), nextPos.x());
@@ -283,7 +289,7 @@ void FlexTiler::close(int index)
         // Found top matches, which will be expanded to bottom.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setBottom(nextPos.y());
+            tile.normBottomRight.setY(nextPos.y());
         }
     } else if (const auto indices =
                        collectNext(verticalVertices_, nextPos.y(), orgPos.x(), nextPos.x());
@@ -291,7 +297,7 @@ void FlexTiler::close(int index)
         // Found bottom matches, which will be expanded to top.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setTop(orgPos.y());
+            tile.normTopLeft.setY(orgPos.y());
         }
     } else {
         qmlInfo(this) << "no collapsible tiles found for " << index;
@@ -396,7 +402,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
     };
 
     AdjacentIndices indices;
-    const auto pos = tiles_.at(static_cast<size_t>(index)).normRect.topLeft();
+    const auto &pos = tiles_.at(static_cast<size_t>(index)).normTopLeft;
     if (orientations & Qt::Horizontal) {
         std::tie(indices.left, indices.right) = collect(horizontalVertices_, pos.x(), pos.y());
     }
@@ -437,25 +443,26 @@ QRectF FlexTiler::calculateMovableNormRect(int index, const AdjacentIndices &adj
 
     for (const auto i : adjacentIndices.left) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const qreal x = tile.normRect.x();
+        const qreal x = tile.normTopLeft.x();
         left = std::max(x + minimumTileWidth(tile), left);
     }
 
     for (const auto i : adjacentIndices.right) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const qreal x = findNextPos(verticalVertices_, tile.normRect.y(), tile.normRect.x());
+        const qreal x = findNextPos(verticalVertices_, tile.normTopLeft.y(), tile.normTopLeft.x());
         right = std::min(x, right);
     }
 
     for (const auto i : adjacentIndices.top) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const qreal y = tile.normRect.y();
+        const qreal y = tile.normTopLeft.y();
         top = std::max(y + minimumTileHeight(tile), top);
     }
 
     for (const auto i : adjacentIndices.bottom) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const qreal y = findNextPos(horizontalVertices_, tile.normRect.x(), tile.normRect.y());
+        const qreal y =
+                findNextPos(horizontalVertices_, tile.normTopLeft.x(), tile.normTopLeft.y());
         bottom = std::min(y, bottom);
     }
 
@@ -476,22 +483,22 @@ void FlexTiler::moveAdjacentTiles(const AdjacentIndices &indices, const QPointF 
 
     for (const auto i : indices.left) {
         auto &tile = tiles_.at(static_cast<size_t>(i));
-        tile.normRect.setRight(normPos.x());
+        tile.normBottomRight.setX(normPos.x());
     }
 
     for (const auto i : indices.right) {
         auto &tile = tiles_.at(static_cast<size_t>(i));
-        tile.normRect.setLeft(normPos.x());
+        tile.normTopLeft.setX(normPos.x());
     }
 
     for (const auto i : indices.top) {
         auto &tile = tiles_.at(static_cast<size_t>(i));
-        tile.normRect.setBottom(normPos.y());
+        tile.normBottomRight.setY(normPos.y());
     }
 
     for (const auto i : indices.bottom) {
         auto &tile = tiles_.at(static_cast<size_t>(i));
-        tile.normRect.setTop(normPos.y());
+        tile.normTopLeft.setY(normPos.y());
     }
 
     polish();
@@ -527,8 +534,8 @@ void FlexTiler::accumulateTiles()
     horizontalVertices_.clear();
     verticalVertices_.clear();
     for (const auto &tile : tiles_) {
-        const qreal x0 = tile.normRect.left();
-        const qreal y0 = tile.normRect.top();
+        const qreal x0 = tile.normTopLeft.x();
+        const qreal y0 = tile.normTopLeft.y();
         horizontalVertices_.insert({ x0, {} });
         verticalVertices_.insert({ y0, {} });
     }
@@ -557,10 +564,10 @@ void FlexTiler::accumulateTiles()
     // }
     for (size_t i = 0; i < tiles_.size(); ++i) {
         auto &tile = tiles_.at(i);
-        const qreal x0 = tile.normRect.left();
-        const qreal x1 = tile.normRect.right();
-        const qreal y0 = tile.normRect.top();
-        const qreal y1 = tile.normRect.bottom();
+        const qreal x0 = tile.normTopLeft.x();
+        const qreal x1 = tile.normBottomRight.x();
+        const qreal y0 = tile.normTopLeft.y();
+        const qreal y1 = tile.normBottomRight.y();
         Q_ASSERT(x0 <= x1 && y0 <= y1);
 
         const auto h0 = horizontalVertices_.lower_bound(x0);

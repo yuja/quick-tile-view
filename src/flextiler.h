@@ -70,8 +70,9 @@ private:
 
     struct Tile
     {
-        // TODO: keep left-top and right-bottom points so right-bottom can also be used as map key?
-        QRectF normRect;
+        // These points can be used as map keys.
+        QPointF normTopLeft;
+        QPointF normBottomRight;
         // Item and context may be nullptr if the corresponding component is unspecified
         // or invalid.
         UniqueItemPtr item;
@@ -103,7 +104,7 @@ private:
     };
 
     void recreateTiles();
-    Tile createTile(const QRectF &normRect, int index);
+    Tile createTile(const QPointF &normTopLeft, const QPointF &normBottomRight, int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
     createHandleItem(Qt::Orientation orientation);
