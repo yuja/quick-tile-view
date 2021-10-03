@@ -57,8 +57,8 @@ void FlexTiler::setVerticalHandle(QQmlComponent *handle)
 
 void FlexTiler::recreateTiles()
 {
-    horizontalHandleWidth_ = 0.0;
-    verticalHandleHeight_ = 0.0;
+    horizontalHandlePixelWidth_ = 0.0;
+    verticalHandlePixelHeight_ = 0.0;
     for (size_t i = 0; i < tiles_.size(); ++i) {
         tiles_.at(i) = createTile(tiles_.at(i).normRect, static_cast<int>(i));
     }
@@ -130,9 +130,9 @@ auto FlexTiler::createHandleItem(Qt::Orientation orientation)
         component->completeCreate();
         // Apply identical width/height to all handles to make the layouter simple.
         if (orientation == Qt::Horizontal) {
-            horizontalHandleWidth_ = item->implicitWidth();
+            horizontalHandlePixelWidth_ = item->implicitWidth();
         } else {
-            verticalHandleHeight_ = item->implicitHeight();
+            verticalHandlePixelHeight_ = item->implicitHeight();
         }
         return { std::move(item), std::move(context) };
     } else {
@@ -325,8 +325,8 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
     // Determine tiles to be moved on press because the grid may change while moving
     // the selected handle.
     movingTiles_ = collectAdjacentTiles(index, orientations);
-    movableNormRect_ = calculateMovableRect(index, movingTiles_);
-    movingHandleGrabOffset_ = event->position() - item->position();
+    movableNormRect_ = calculateMovableNormRect(index, movingTiles_);
+    movingHandleGrabPixelOffset_ = event->position() - item->position();
     setKeepMouseGrab(true);
 }
 
@@ -338,8 +338,8 @@ void FlexTiler::mouseMoveEvent(QMouseEvent *event)
     if (movableNormRect_.isEmpty())
         return;
 
-    const auto outerRect = extendedOuterRect();
-    const auto pixelPos = event->position() - movingHandleGrabOffset_;
+    const auto outerRect = extendedOuterPixelRect();
+    const auto pixelPos = event->position() - movingHandleGrabPixelOffset_;
     const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
                           (pixelPos.y() - outerRect.top()) / outerRect.height());
     const QPointF clampedNormPos(
@@ -358,7 +358,7 @@ void FlexTiler::resetMovingState()
 {
     movingTiles_ = {};
     movableNormRect_ = {};
-    movingHandleGrabOffset_ = {};
+    movingHandleGrabPixelOffset_ = {};
 }
 
 auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) const
@@ -407,7 +407,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
     return indices;
 }
 
-QRectF FlexTiler::calculateMovableRect(int index, const AdjacentIndices &adjacentIndices) const
+QRectF FlexTiler::calculateMovableNormRect(int index, const AdjacentIndices &adjacentIndices) const
 {
     // TODO: extract utility function
     const auto findNextPos = [](const VerticesMap &vertices, qreal key, qreal pos) -> qreal {
@@ -420,7 +420,7 @@ QRectF FlexTiler::calculateMovableRect(int index, const AdjacentIndices &adjacen
         return v1p->first;
     };
 
-    const auto outerRect = extendedOuterRect();
+    const auto outerRect = extendedOuterPixelRect();
     const auto minimumTileWidth = [&outerRect](const Tile &tile) -> qreal {
         const auto *a = tileAttached(tile.item.get());
         return a ? a->minimumWidth() / outerRect.width() : 0.0;
@@ -460,8 +460,8 @@ QRectF FlexTiler::calculateMovableRect(int index, const AdjacentIndices &adjacen
     }
 
     const auto &targetTile = tiles_.at(static_cast<size_t>(index));
-    const qreal marginX = horizontalHandleWidth_ / outerRect.width();
-    const qreal marginY = verticalHandleHeight_ / outerRect.height();
+    const qreal marginX = horizontalHandlePixelWidth_ / outerRect.width();
+    const qreal marginY = verticalHandlePixelHeight_ / outerRect.height();
     return {
         left + marginX,
         top + marginY,
@@ -511,13 +511,13 @@ void FlexTiler::updatePolish()
 }
 
 /// Outer bounds including invisible left-top handles.
-QRectF FlexTiler::extendedOuterRect() const
+QRectF FlexTiler::extendedOuterPixelRect() const
 {
     return {
-        -horizontalHandleWidth_,
-        -verticalHandleHeight_,
-        width() + horizontalHandleWidth_,
-        height() + verticalHandleHeight_,
+        -horizontalHandlePixelWidth_,
+        -verticalHandlePixelHeight_,
+        width() + horizontalHandlePixelWidth_,
+        height() + verticalHandlePixelHeight_,
     };
 }
 
@@ -628,7 +628,7 @@ void FlexTiler::accumulateTiles()
 
 void FlexTiler::resizeTiles()
 {
-    const auto outerRect = extendedOuterRect();
+    const auto outerRect = extendedOuterPixelRect();
     const auto mapToPixelX = [&outerRect](qreal x) {
         return outerRect.left() + x * outerRect.width();
     };
@@ -660,16 +660,16 @@ void FlexTiler::resizeTiles()
                 continue;
             const auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
             if (auto &item = tile.item) {
-                const qreal m = verticalHandleHeight_;
+                const qreal m = verticalHandlePixelHeight_;
                 item->setY(mapToPixelY(v0p->first) + m);
                 item->setHeight((v1p->first - v0p->first) * outerRect.height() - m);
             }
             if (auto &item = tile.horizontalHandleItem) {
-                const qreal m = verticalHandleHeight_;
+                const qreal m = verticalHandlePixelHeight_;
                 item->setVisible(v0p->second.normHandleSize > 0.0);
                 item->setX(mapToPixelX(x));
                 item->setY(mapToPixelY(v0p->first) + m);
-                item->setWidth(horizontalHandleWidth_);
+                item->setWidth(horizontalHandlePixelWidth_);
                 item->setHeight(v0p->second.normHandleSize * outerRect.height() - m);
             }
         }
@@ -694,17 +694,17 @@ void FlexTiler::resizeTiles()
                 continue;
             const auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
             if (auto &item = tile.item) {
-                const qreal m = horizontalHandleWidth_;
+                const qreal m = horizontalHandlePixelWidth_;
                 item->setX(mapToPixelX(v0p->first) + m);
                 item->setWidth((v1p->first - v0p->first) * outerRect.width() - m);
             }
             if (auto &item = tile.verticalHandleItem) {
-                const qreal m = horizontalHandleWidth_;
+                const qreal m = horizontalHandlePixelWidth_;
                 item->setVisible(v0p->second.normHandleSize > 0.0);
                 item->setX(mapToPixelX(v0p->first) + m);
                 item->setY(mapToPixelY(y));
                 item->setWidth(v0p->second.normHandleSize * outerRect.width() - m);
-                item->setHeight(verticalHandleHeight_);
+                item->setHeight(verticalHandlePixelHeight_);
             }
         }
     }

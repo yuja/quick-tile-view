@@ -110,9 +110,9 @@ private:
     std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
-    QRectF calculateMovableRect(int index, const AdjacentIndices &adjacentIndices) const;
+    QRectF calculateMovableNormRect(int index, const AdjacentIndices &adjacentIndices) const;
     void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos);
-    QRectF extendedOuterRect() const;
+    QRectF extendedOuterPixelRect() const;
     void accumulateTiles();
     void resizeTiles();
 
@@ -122,11 +122,11 @@ private:
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
     QPointer<QQmlComponent> horizontalHandle_ = nullptr;
     QPointer<QQmlComponent> verticalHandle_ = nullptr;
-    qreal horizontalHandleWidth_ = 0.0;
-    qreal verticalHandleHeight_ = 0.0;
+    qreal horizontalHandlePixelWidth_ = 0.0;
+    qreal verticalHandlePixelHeight_ = 0.0;
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
-    QPointF movingHandleGrabOffset_;
+    QPointF movingHandleGrabPixelOffset_;
 };
 
 class FlexTilerAttached : public QObject
