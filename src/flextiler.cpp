@@ -232,17 +232,6 @@ void FlexTiler::close(int index)
         return;
     }
 
-    // TODO: extract utility function
-    const auto findNextPos = [](const VerticesMap &verticesMap, qreal key, qreal pos) -> qreal {
-        const auto line = verticesMap.find(key);
-        if (line == verticesMap.end())
-            return pos;
-        const auto vp = line->second.upper_bound(pos);
-        if (vp == line->second.end())
-            return pos;
-        return vp->first;
-    };
-
     const auto collectLine = [](auto linep, qreal pos0, qreal pos1) -> std::vector<int> {
         std::vector<int> indices;
         auto vp = linep->second.find(pos0);
@@ -271,9 +260,8 @@ void FlexTiler::close(int index)
         return collectLine(linep, pos0, pos1);
     };
 
-    const QPointF orgPos = tiles_.at(static_cast<size_t>(index)).normTopLeft;
-    const QPointF nextPos { findNextPos(verticalVertices_, orgPos.y(), orgPos.x()),
-                            findNextPos(horizontalVertices_, orgPos.x(), orgPos.y()) };
+    const auto orgPos = tiles_.at(static_cast<size_t>(index)).normTopLeft;
+    const auto nextPos = tiles_.at(static_cast<size_t>(index)).normBottomRight;
 
     if (const auto indices = collectPrev(horizontalVertices_, orgPos.x(), orgPos.y(), nextPos.y());
         !indices.empty()) {
@@ -422,17 +410,6 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
 
 QRectF FlexTiler::calculateMovableNormRect(int index, const AdjacentIndices &adjacentIndices) const
 {
-    // TODO: extract utility function
-    const auto findNextPos = [](const VerticesMap &vertices, qreal key, qreal pos) -> qreal {
-        const auto line = vertices.find(key);
-        if (line == vertices.end())
-            return pos;
-        const auto v1p = line->second.upper_bound(pos);
-        if (v1p == line->second.end())
-            return pos;
-        return v1p->first;
-    };
-
     const auto outerRect = extendedOuterPixelRect();
     const auto minimumTileWidth = [&outerRect](const Tile &tile) -> qreal {
         const auto *a = tileAttached(tile.item.get());
@@ -456,7 +433,7 @@ QRectF FlexTiler::calculateMovableNormRect(int index, const AdjacentIndices &adj
 
     for (const auto i : adjacentIndices.right) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const qreal x = findNextPos(verticalVertices_, tile.normTopLeft.y(), tile.normTopLeft.x());
+        const qreal x = tile.normBottomRight.x();
         right = std::min(x, right);
     }
 
@@ -468,8 +445,7 @@ QRectF FlexTiler::calculateMovableNormRect(int index, const AdjacentIndices &adj
 
     for (const auto i : adjacentIndices.bottom) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const qreal y =
-                findNextPos(horizontalVertices_, tile.normTopLeft.x(), tile.normTopLeft.y());
+        const qreal y = tile.normBottomRight.y();
         bottom = std::min(y, bottom);
     }
 
