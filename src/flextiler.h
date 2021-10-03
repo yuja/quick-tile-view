@@ -70,8 +70,8 @@ private:
 
     struct Tile
     {
+        // TODO: keep left-top and right-bottom points so right-bottom can also be used as map key?
         QRectF normRect;
-        QPoint pixelPos; // key to vertices map, updated by acumulateTiles()
         // Item and context may be nullptr if the corresponding component is unspecified
         // or invalid.
         UniqueItemPtr item;
@@ -87,12 +87,12 @@ private:
     struct Vertex
     {
         int tileIndex; // -1 if terminator
-        int handlePixelSize; // 0: invisible, >0: span n pixels
+        qreal normHandleSize; // 0: invisible, >0: span n pixels
         bool primary; // is starting vertex in orthogonal axis?
         bool collapsible; // can any of the adjacent tiles be expanded to fill this cell?
     };
 
-    using VerticesMap = std::map<int, std::map<int, Vertex>>; // x: {y: v} or y: {x: v}
+    using VerticesMap = std::map<qreal, std::map<qreal, Vertex>>; // x: {y: v} or y: {x: v}
 
     struct AdjacentIndices
     {
@@ -111,11 +111,10 @@ private:
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
     QRectF calculateMovableRect(int index, const AdjacentIndices &adjacentIndices) const;
-    void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &pixelPos);
+    void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos);
     QRectF extendedOuterRect() const;
     void accumulateTiles();
     void resizeTiles();
-    void alignTilesToVertices();
 
     std::vector<Tile> tiles_;
     VerticesMap horizontalVertices_; // x: {y: v}, updated by accumulateTiles()
@@ -126,7 +125,7 @@ private:
     qreal horizontalHandleWidth_ = 0.0;
     qreal verticalHandleHeight_ = 0.0;
     AdjacentIndices movingTiles_;
-    QRectF movablePixelRect_;
+    QRectF movableNormRect_;
     QPointF movingHandleGrabOffset_;
 };
 

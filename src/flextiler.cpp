@@ -16,7 +16,7 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
 
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
-    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, { 0, 0 }, {}, {}, {}, {}, {}, {} });
+    tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
     setAcceptedMouseButtons(Qt::LeftButton);
 }
 
@@ -72,7 +72,6 @@ auto FlexTiler::createTile(const QRectF &normRect, int index) -> Tile
     auto [vHandleItem, vHandleContext] = createHandleItem(Qt::Vertical);
     return {
         normRect,
-        { 0, 0 },
         std::move(item),
         std::move(context),
         std::move(hHandleItem),
@@ -197,6 +196,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     tiles_.at(static_cast<size_t>(index)).normRect = { srcRect.x(), srcRect.y(), w, h };
     std::vector<Tile> newTiles;
     for (int i = 1; i < count; ++i) {
+        // TODO: find closest (x, y) key from vertices map in pixel resolution
         const QRectF rect(srcRect.x() + i * xk * w, srcRect.y() + i * yk * h, w, h);
         newTiles.push_back(createTile(rect, index + i));
     }
@@ -220,7 +220,7 @@ void FlexTiler::close(int index)
     }
 
     // TODO: extract utility function
-    const auto findNextPos = [](const VerticesMap &verticesMap, int key, int pos) -> int {
+    const auto findNextPos = [](const VerticesMap &verticesMap, qreal key, qreal pos) -> qreal {
         const auto line = verticesMap.find(key);
         if (line == verticesMap.end())
             return pos;
@@ -230,7 +230,7 @@ void FlexTiler::close(int index)
         return vp->first;
     };
 
-    const auto collectLine = [](auto linep, int pos0, int pos1) -> std::vector<int> {
+    const auto collectLine = [](auto linep, qreal pos0, qreal pos1) -> std::vector<int> {
         std::vector<int> indices;
         auto vp = linep->second.find(pos0);
         for (; vp != linep->second.end() && vp->first < pos1; ++vp) {
@@ -242,33 +242,32 @@ void FlexTiler::close(int index)
         return indices;
     };
 
-    const auto collectPrev = [collectLine](const VerticesMap &verticesMap, int key0, int pos0,
-                                           int pos1) -> std::vector<int> {
+    const auto collectPrev = [collectLine](const VerticesMap &verticesMap, qreal key0, qreal pos0,
+                                           qreal pos1) -> std::vector<int> {
         const auto linep = verticesMap.find(key0);
         if (linep == verticesMap.begin() || linep == verticesMap.end())
             return {};
         return collectLine(std::prev(linep), pos0, pos1);
     };
 
-    const auto collectNext = [collectLine](const VerticesMap &verticesMap, int key1, int pos0,
-                                           int pos1) -> std::vector<int> {
+    const auto collectNext = [collectLine](const VerticesMap &verticesMap, qreal key1, qreal pos0,
+                                           qreal pos1) -> std::vector<int> {
         const auto linep = verticesMap.find(key1);
         if (linep == verticesMap.end())
             return {};
         return collectLine(linep, pos0, pos1);
     };
 
-    const auto orgNormRect = tiles_.at(static_cast<size_t>(index)).normRect;
-    const auto orgPos = tiles_.at(static_cast<size_t>(index)).pixelPos;
-    const QPoint nextPos { findNextPos(verticalVertices_, orgPos.y(), orgPos.x()),
-                           findNextPos(horizontalVertices_, orgPos.x(), orgPos.y()) };
+    const QPointF orgPos = tiles_.at(static_cast<size_t>(index)).normRect.topLeft();
+    const QPointF nextPos { findNextPos(verticalVertices_, orgPos.y(), orgPos.x()),
+                            findNextPos(horizontalVertices_, orgPos.x(), orgPos.y()) };
 
     if (const auto indices = collectPrev(horizontalVertices_, orgPos.x(), orgPos.y(), nextPos.y());
         !indices.empty()) {
         // Found left matches, which will be expanded to right.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setRight(orgNormRect.right());
+            tile.normRect.setRight(nextPos.x());
         }
     } else if (const auto indices =
                        collectNext(horizontalVertices_, nextPos.x(), orgPos.y(), nextPos.y());
@@ -276,7 +275,7 @@ void FlexTiler::close(int index)
         // Found right matches, which will be expanded to left.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setLeft(orgNormRect.left());
+            tile.normRect.setLeft(orgPos.x());
         }
     } else if (const auto indices =
                        collectPrev(verticalVertices_, orgPos.y(), orgPos.x(), nextPos.x());
@@ -284,7 +283,7 @@ void FlexTiler::close(int index)
         // Found top matches, which will be expanded to bottom.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setBottom(orgNormRect.bottom());
+            tile.normRect.setBottom(nextPos.y());
         }
     } else if (const auto indices =
                        collectNext(verticalVertices_, nextPos.y(), orgPos.x(), nextPos.x());
@@ -292,7 +291,7 @@ void FlexTiler::close(int index)
         // Found bottom matches, which will be expanded to top.
         for (const int i : indices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
-            tile.normRect.setTop(orgNormRect.top());
+            tile.normRect.setTop(orgPos.y());
         }
     } else {
         qmlInfo(this) << "no collapsible tiles found for " << index;
@@ -323,14 +322,10 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
     if (index < 0)
         return;
 
-    // Make sure that aligned vertices at the current resolution should never get
-    // unaligned on future geometry change.
-    alignTilesToVertices();
-
     // Determine tiles to be moved on press because the grid may change while moving
     // the selected handle.
     movingTiles_ = collectAdjacentTiles(index, orientations);
-    movablePixelRect_ = calculateMovableRect(index, movingTiles_);
+    movableNormRect_ = calculateMovableRect(index, movingTiles_);
     movingHandleGrabOffset_ = event->position() - item->position();
     setKeepMouseGrab(true);
 }
@@ -340,14 +335,17 @@ void FlexTiler::mouseMoveEvent(QMouseEvent *event)
     if (movingTiles_.left.empty() && movingTiles_.right.empty() && movingTiles_.top.empty()
         && movingTiles_.bottom.empty())
         return;
-    if (movablePixelRect_.isEmpty())
+    if (movableNormRect_.isEmpty())
         return;
 
-    const auto rawPixelPos = event->position() - movingHandleGrabOffset_;
-    const QPointF pixelPos(
-            std::clamp(rawPixelPos.x(), movablePixelRect_.left(), movablePixelRect_.right()),
-            std::clamp(rawPixelPos.y(), movablePixelRect_.top(), movablePixelRect_.bottom()));
-    moveAdjacentTiles(movingTiles_, pixelPos);
+    const auto outerRect = extendedOuterRect();
+    const auto pixelPos = event->position() - movingHandleGrabOffset_;
+    const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
+                          (pixelPos.y() - outerRect.top()) / outerRect.height());
+    const QPointF clampedNormPos(
+            std::clamp(normPos.x(), movableNormRect_.left(), movableNormRect_.right()),
+            std::clamp(normPos.y(), movableNormRect_.top(), movableNormRect_.bottom()));
+    moveAdjacentTiles(movingTiles_, clampedNormPos);
 }
 
 void FlexTiler::mouseReleaseEvent(QMouseEvent * /*event*/)
@@ -359,15 +357,15 @@ void FlexTiler::mouseReleaseEvent(QMouseEvent * /*event*/)
 void FlexTiler::resetMovingState()
 {
     movingTiles_ = {};
-    movablePixelRect_ = {};
+    movableNormRect_ = {};
     movingHandleGrabOffset_ = {};
 }
 
 auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) const
         -> AdjacentIndices
 {
-    const auto collect = [](const VerticesMap &vertices, int key1,
-                            int pos0) -> std::tuple<std::vector<int>, std::vector<int>> {
+    const auto collect = [](const VerticesMap &vertices, qreal key1,
+                            qreal pos0) -> std::tuple<std::vector<int>, std::vector<int>> {
         // Determine the right/bottom line from the handle item, and collect tiles
         // within the handle span.
         const auto line1 = vertices.find(key1);
@@ -376,7 +374,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
         const auto v1s = line1->second.find(pos0);
         if (v1s == line1->second.end())
             return {};
-        const int pos1 = pos0 + v1s->second.handlePixelSize;
+        const qreal pos1 = pos0 + v1s->second.normHandleSize;
         std::vector<int> tiles1;
         for (auto p = v1s; p != line1->second.end() && p->first < pos1; ++p) {
             Q_ASSERT(p->second.tileIndex >= 0);
@@ -398,7 +396,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
     };
 
     AdjacentIndices indices;
-    const auto pos = tiles_.at(static_cast<size_t>(index)).pixelPos;
+    const auto pos = tiles_.at(static_cast<size_t>(index)).normRect.topLeft();
     if (orientations & Qt::Horizontal) {
         std::tie(indices.left, indices.right) = collect(horizontalVertices_, pos.x(), pos.y());
     }
@@ -412,7 +410,7 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
 QRectF FlexTiler::calculateMovableRect(int index, const AdjacentIndices &adjacentIndices) const
 {
     // TODO: extract utility function
-    const auto findNextPos = [](const VerticesMap &vertices, int key, int pos) -> int {
+    const auto findNextPos = [](const VerticesMap &vertices, qreal key, qreal pos) -> qreal {
         const auto line = vertices.find(key);
         if (line == vertices.end())
             return pos;
@@ -422,59 +420,59 @@ QRectF FlexTiler::calculateMovableRect(int index, const AdjacentIndices &adjacen
         return v1p->first;
     };
 
-    const auto minimumTileWidth = [](const Tile &tile) -> qreal {
+    const auto outerRect = extendedOuterRect();
+    const auto minimumTileWidth = [&outerRect](const Tile &tile) -> qreal {
         const auto *a = tileAttached(tile.item.get());
-        return a ? a->minimumWidth() : 0.0;
+        return a ? a->minimumWidth() / outerRect.width() : 0.0;
     };
-    const auto minimumTileHeight = [](const Tile &tile) -> qreal {
+    const auto minimumTileHeight = [&outerRect](const Tile &tile) -> qreal {
         const auto *a = tileAttached(tile.item.get());
-        return a ? a->minimumHeight() : 0.0;
+        return a ? a->minimumHeight() / outerRect.height() : 0.0;
     };
 
-    const auto outerRect = extendedOuterRect();
-    qreal left = outerRect.left();
-    qreal right = outerRect.right();
-    qreal top = outerRect.top();
-    qreal bottom = outerRect.bottom();
+    qreal left = 0.0;
+    qreal right = 1.0;
+    qreal top = 0.0;
+    qreal bottom = 1.0;
 
     for (const auto i : adjacentIndices.left) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const int x = tile.pixelPos.x();
-        left = std::max(static_cast<qreal>(x) + minimumTileWidth(tile), left);
+        const qreal x = tile.normRect.x();
+        left = std::max(x + minimumTileWidth(tile), left);
     }
 
     for (const auto i : adjacentIndices.right) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const int x = findNextPos(verticalVertices_, tile.pixelPos.y(), tile.pixelPos.x());
-        right = std::min(static_cast<qreal>(x), right);
+        const qreal x = findNextPos(verticalVertices_, tile.normRect.y(), tile.normRect.x());
+        right = std::min(x, right);
     }
 
     for (const auto i : adjacentIndices.top) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const int y = tile.pixelPos.y();
-        top = std::max(static_cast<qreal>(y) + minimumTileHeight(tile), top);
+        const qreal y = tile.normRect.y();
+        top = std::max(y + minimumTileHeight(tile), top);
     }
 
     for (const auto i : adjacentIndices.bottom) {
         const auto &tile = tiles_.at(static_cast<size_t>(i));
-        const int y = findNextPos(horizontalVertices_, tile.pixelPos.x(), tile.pixelPos.y());
-        bottom = std::min(static_cast<qreal>(y), bottom);
+        const qreal y = findNextPos(horizontalVertices_, tile.normRect.x(), tile.normRect.y());
+        bottom = std::min(y, bottom);
     }
 
     const auto &targetTile = tiles_.at(static_cast<size_t>(index));
+    const qreal marginX = horizontalHandleWidth_ / outerRect.width();
+    const qreal marginY = verticalHandleHeight_ / outerRect.height();
     return {
-        left + horizontalHandleWidth_,
-        top + verticalHandleHeight_,
-        right - left - 2 * horizontalHandleWidth_ - minimumTileWidth(targetTile),
-        bottom - top - 2 * verticalHandleHeight_ - minimumTileHeight(targetTile),
+        left + marginX,
+        top + marginY,
+        right - left - 2 * marginX - minimumTileWidth(targetTile),
+        bottom - top - 2 * marginY - minimumTileHeight(targetTile),
     };
 }
 
-void FlexTiler::moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &pixelPos)
+void FlexTiler::moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos)
 {
-    const auto outerRect = extendedOuterRect();
-    const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
-                          (pixelPos.y() - outerRect.top()) / outerRect.height());
+    // TODO: snap to (x, y) key of vertices map
 
     for (const auto i : indices.left) {
         auto &tile = tiles_.at(static_cast<size_t>(i));
@@ -508,7 +506,7 @@ void FlexTiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeome
 
 void FlexTiler::updatePolish()
 {
-    accumulateTiles();
+    accumulateTiles(); // TODO: no need to rebuild vertices map on geometryChange()
     resizeTiles();
 }
 
@@ -525,21 +523,12 @@ QRectF FlexTiler::extendedOuterRect() const
 
 void FlexTiler::accumulateTiles()
 {
-    const auto outerRect = extendedOuterRect();
-    // Align to pixel border so separate borders can be connected.
-    const auto mapToPixelX = [&outerRect](qreal x) {
-        return static_cast<int>(std::lround(outerRect.left() + x * outerRect.width()));
-    };
-    const auto mapToPixelY = [&outerRect](qreal y) {
-        return static_cast<int>(std::lround(outerRect.top() + y * outerRect.height()));
-    };
-
     // Collect all possible vertices.
     horizontalVertices_.clear();
     verticalVertices_.clear();
     for (const auto &tile : tiles_) {
-        const int x0 = mapToPixelX(tile.normRect.left());
-        const int y0 = mapToPixelY(tile.normRect.top());
+        const qreal x0 = tile.normRect.left();
+        const qreal y0 = tile.normRect.top();
         horizontalVertices_.insert({ x0, {} });
         verticalVertices_.insert({ y0, {} });
     }
@@ -568,44 +557,32 @@ void FlexTiler::accumulateTiles()
     // }
     for (size_t i = 0; i < tiles_.size(); ++i) {
         auto &tile = tiles_.at(i);
-        const int x0 = mapToPixelX(tile.normRect.left());
-        const int x1 = mapToPixelX(tile.normRect.right());
-        const int y0 = mapToPixelY(tile.normRect.top());
-        const int y1 = mapToPixelY(tile.normRect.bottom());
+        const qreal x0 = tile.normRect.left();
+        const qreal x1 = tile.normRect.right();
+        const qreal y0 = tile.normRect.top();
+        const qreal y1 = tile.normRect.bottom();
         Q_ASSERT(x0 <= x1 && y0 <= y1);
 
         const auto h0 = horizontalVertices_.lower_bound(x0);
         const auto h1 = horizontalVertices_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            // TODO: deal with low pixel resolution and zero-sized tile
-            p->second.insert({ y0, { static_cast<int>(i), 0, p == h0, false } });
+            p->second.insert({ y0, { static_cast<int>(i), 0.0, p == h0, false } });
         }
 
         const auto v0 = verticalVertices_.lower_bound(y0);
         const auto v1 = verticalVertices_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            // TODO: deal with low pixel resolution and zero-sized tile
-            p->second.insert({ x0, { static_cast<int>(i), 0, p == v0, false } });
+            p->second.insert({ x0, { static_cast<int>(i), 0.0, p == v0, false } });
         }
-
-        Q_ASSERT(h0->first == x0);
-        Q_ASSERT(v0->first == y0);
-        tile.pixelPos.setX(x0);
-        tile.pixelPos.setY(y0);
     }
 
     // Insert terminators for convenience.
     for (auto &[x, vertices] : horizontalVertices_) {
-        // TODO: deal with low pixel resolution and zero-sized tile
-        vertices.insert({ mapToPixelY(1.0), { -1, 0, false, false } });
+        vertices.insert({ 1.0, { -1, 0.0, false, false } });
     }
     for (auto &[y, vertices] : verticalVertices_) {
-        // TODO: deal with low pixel resolution and zero-sized tile
-        vertices.insert({ mapToPixelX(1.0), { -1, 0, false, false } });
+        vertices.insert({ 1.0, { -1, 0.0, false, false } });
     }
-
-    // TODO: fix up pixel size per minimumWidth/Height if possible; may be need to
-    // recalculate the grid?
 
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
     const auto calculateAdjacentRelation = [](VerticesMap &vertices) {
@@ -623,8 +600,8 @@ void FlexTiler::accumulateTiles()
             int d0 = 1, d1 = 1;
             while (v0p != line0->second.end() && v1p != line1->second.end()) {
                 // Handle can be isolated if two vertices of the adjacent lines meet.
-                if (v0p->first == v1p->first) {
-                    v1s->second.handlePixelSize = v1p->first - v1s->first;
+                if (v0p->first == v1p->first) { // should exactly match here
+                    v1s->second.normHandleSize = v1p->first - v1s->first;
                     // A single cell can be collapsed if the adjacent lines meet.
                     const bool border = v0s->second.tileIndex != v1s->second.tileIndex;
                     v0s->second.collapsible = v0s->second.collapsible || (d0 == 1 && border);
@@ -651,8 +628,18 @@ void FlexTiler::accumulateTiles()
 
 void FlexTiler::resizeTiles()
 {
+    const auto outerRect = extendedOuterRect();
+    const auto mapToPixelX = [&outerRect](qreal x) {
+        return outerRect.left() + x * outerRect.width();
+    };
+    const auto mapToPixelY = [&outerRect](qreal y) {
+        return outerRect.top() + y * outerRect.height();
+    };
+
     std::vector<bool> tilesCollapsible;
     tilesCollapsible.resize(tiles_.size(), false);
+
+    // TODO: fix up pixel size per minimumWidth/Height
 
     for (const auto &[x, vertices] : horizontalVertices_) {
         auto v0p = vertices.begin();
@@ -674,16 +661,16 @@ void FlexTiler::resizeTiles()
             const auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
             if (auto &item = tile.item) {
                 const qreal m = verticalHandleHeight_;
-                item->setY(static_cast<qreal>(v0p->first) + m);
-                item->setHeight(static_cast<qreal>(v1p->first - v0p->first) - m);
+                item->setY(mapToPixelY(v0p->first) + m);
+                item->setHeight((v1p->first - v0p->first) * outerRect.height() - m);
             }
             if (auto &item = tile.horizontalHandleItem) {
                 const qreal m = verticalHandleHeight_;
-                item->setVisible(v0p->second.handlePixelSize > 0);
-                item->setX(static_cast<qreal>(x));
-                item->setY(static_cast<qreal>(v0p->first) + m);
+                item->setVisible(v0p->second.normHandleSize > 0.0);
+                item->setX(mapToPixelX(x));
+                item->setY(mapToPixelY(v0p->first) + m);
                 item->setWidth(horizontalHandleWidth_);
-                item->setHeight(static_cast<qreal>(v0p->second.handlePixelSize) - m);
+                item->setHeight(v0p->second.normHandleSize * outerRect.height() - m);
             }
         }
     }
@@ -708,15 +695,15 @@ void FlexTiler::resizeTiles()
             const auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
             if (auto &item = tile.item) {
                 const qreal m = horizontalHandleWidth_;
-                item->setX(static_cast<qreal>(v0p->first) + m);
-                item->setWidth(static_cast<qreal>(v1p->first - v0p->first) - m);
+                item->setX(mapToPixelX(v0p->first) + m);
+                item->setWidth((v1p->first - v0p->first) * outerRect.width() - m);
             }
             if (auto &item = tile.verticalHandleItem) {
                 const qreal m = horizontalHandleWidth_;
-                item->setVisible(v0p->second.handlePixelSize > 0);
-                item->setX(static_cast<qreal>(v0p->first) + m);
-                item->setY(static_cast<qreal>(y));
-                item->setWidth(static_cast<qreal>(v0p->second.handlePixelSize) - m);
+                item->setVisible(v0p->second.normHandleSize > 0.0);
+                item->setX(mapToPixelX(v0p->first) + m);
+                item->setY(mapToPixelY(y));
+                item->setWidth(v0p->second.normHandleSize * outerRect.width() - m);
                 item->setHeight(verticalHandleHeight_);
             }
         }
@@ -726,45 +713,6 @@ void FlexTiler::resizeTiles()
         const auto &tile = tiles_.at(i);
         if (auto *a = tileAttached(tile.item.get())) {
             a->setClosable(tilesCollapsible.at(i));
-        }
-    }
-}
-
-/// Recalculates normalized rect of tiles at the current resolution.
-void FlexTiler::alignTilesToVertices()
-{
-    // TODO: Maybe we'd better off using fixed grid resolution. Even though it may
-    // disagree with pixels, it's hard to deal with unstable grid alignment.
-    // alignTilesToVertices();
-
-    const auto outerRect = extendedOuterRect();
-
-    for (const auto &[x, vertices] : horizontalVertices_) {
-        auto v0p = vertices.begin();
-        if (v0p == vertices.end())
-            continue;
-        for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->second.tileIndex < 0 || !v0p->second.primary)
-                continue;
-            auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
-            tile.normRect.setY((static_cast<qreal>(v0p->first) - outerRect.top())
-                               / outerRect.height());
-            tile.normRect.setHeight(static_cast<qreal>(v1p->first - v0p->first)
-                                    / outerRect.height());
-        }
-    }
-
-    for (const auto &[y, vertices] : verticalVertices_) {
-        auto v0p = vertices.begin();
-        if (v0p == vertices.end())
-            continue;
-        for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->second.tileIndex < 0 || !v0p->second.primary)
-                continue;
-            auto &tile = tiles_.at(static_cast<size_t>(v0p->second.tileIndex));
-            tile.normRect.setX((static_cast<qreal>(v0p->first) - outerRect.left())
-                               / outerRect.width());
-            tile.normRect.setWidth(static_cast<qreal>(v1p->first - v0p->first) / outerRect.width());
         }
     }
 }
