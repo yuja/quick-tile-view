@@ -12,6 +12,26 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
         return nullptr;
     return qobject_cast<FlexTilerAttached *>(qmlAttachedPropertiesObject<FlexTiler>(item));
 }
+
+constexpr qreal snapPixelSize = 5.0;
+
+template<typename V>
+qreal snapToVertices(const std::map<qreal, std::map<qreal, V>> &vertices, qreal key, qreal epsilon)
+{
+    const auto start = vertices.lower_bound(key - epsilon);
+    if (start == vertices.end())
+        return key;
+    qreal bestKey = start->first;
+    qreal bestDistance = std::abs(start->first - key);
+    for (auto p = std::next(start); p != vertices.end(); ++p) {
+        const qreal d = std::abs(p->first - key);
+        if (d > bestDistance)
+            break;
+        bestKey = p->first;
+        bestDistance = d;
+    }
+    return bestDistance <= epsilon ? bestKey : key;
+}
 }
 
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
@@ -195,21 +215,27 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     // Insert new tile and adjust indices. Unchanged (x, y) values must be preserved.
     std::vector<Tile> newTiles;
     if (orientation == Qt::Horizontal) {
+        const auto snapX = [this](qreal x) {
+            return snapToVertices(horizontalVertices_, x,
+                                  snapPixelSize / extendedOuterPixelRect().width());
+        };
         const qreal w = (sp1.x() - sp0.x()) / count;
-        // TODO: find closest (x, y) key from vertices map in pixel resolution
-        tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(sp0.x() + w);
+        tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(snapX(sp0.x() + w));
         for (int i = 1; i < count; ++i) {
-            const qreal x0 = sp0.x() + i * w;
-            const qreal x1 = (i < count - 1) ? sp0.x() + (i + 1) * w : sp1.x();
+            const qreal x0 = snapX(sp0.x() + i * w);
+            const qreal x1 = (i < count - 1) ? snapX(sp0.x() + (i + 1) * w) : sp1.x();
             newTiles.push_back(createTile({ x0, sp0.y() }, { x1, sp1.y() }, index + i));
         }
     } else {
+        const auto snapY = [this](qreal y) {
+            return snapToVertices(verticalVertices_, y,
+                                  snapPixelSize / extendedOuterPixelRect().height());
+        };
         const qreal h = (sp1.y() - sp0.y()) / count;
-        // TODO: find closest (x, y) key from vertices map in pixel resolution
-        tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(sp0.y() + h);
+        tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(snapY(sp0.y() + h));
         for (int i = 1; i < count; ++i) {
-            const qreal y0 = sp0.y() + i * h;
-            const qreal y1 = (i < count - 1) ? sp0.y() + (i + 1) * h : sp1.y();
+            const qreal y0 = snapY(sp0.y() + i * h);
+            const qreal y1 = (i < count - 1) ? snapY(sp0.y() + (i + 1) * h) : sp1.y();
             newTiles.push_back(createTile({ sp0.x(), y0 }, { sp1.x(), y1 }, index + i));
         }
     }
