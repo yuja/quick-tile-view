@@ -128,6 +128,8 @@ private:
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
     QPointF movingHandleGrabPixelOffset_;
+    VerticesMap preMoveHorizontalVertices_;
+    VerticesMap preMoveVerticalVertices_;
 };
 
 class FlexTilerAttached : public QObject

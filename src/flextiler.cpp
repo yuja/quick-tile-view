@@ -354,6 +354,8 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
     movingTiles_ = collectAdjacentTiles(index, orientations);
     movableNormRect_ = calculateMovableNormRect(index, movingTiles_);
     movingHandleGrabPixelOffset_ = event->position() - item->position();
+    preMoveHorizontalVertices_ = horizontalVertices_;
+    preMoveVerticalVertices_ = verticalVertices_;
     setKeepMouseGrab(true);
 }
 
@@ -369,9 +371,13 @@ void FlexTiler::mouseMoveEvent(QMouseEvent *event)
     const auto pixelPos = event->position() - movingHandleGrabPixelOffset_;
     const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
                           (pixelPos.y() - outerRect.top()) / outerRect.height());
+    const QPointF snappedNormPos(snapToVertices(preMoveHorizontalVertices_, normPos.x(),
+                                                snapPixelSize / extendedOuterPixelRect().width()),
+                                 snapToVertices(preMoveVerticalVertices_, normPos.y(),
+                                                snapPixelSize / extendedOuterPixelRect().height()));
     const QPointF clampedNormPos(
-            std::clamp(normPos.x(), movableNormRect_.left(), movableNormRect_.right()),
-            std::clamp(normPos.y(), movableNormRect_.top(), movableNormRect_.bottom()));
+            std::clamp(snappedNormPos.x(), movableNormRect_.left(), movableNormRect_.right()),
+            std::clamp(snappedNormPos.y(), movableNormRect_.top(), movableNormRect_.bottom()));
     moveAdjacentTiles(movingTiles_, clampedNormPos);
 }
 
@@ -386,6 +392,8 @@ void FlexTiler::resetMovingState()
     movingTiles_ = {};
     movableNormRect_ = {};
     movingHandleGrabPixelOffset_ = {};
+    preMoveHorizontalVertices_.clear();
+    preMoveVerticalVertices_.clear();
 }
 
 auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) const
@@ -488,8 +496,6 @@ QRectF FlexTiler::calculateMovableNormRect(int index, const AdjacentIndices &adj
 
 void FlexTiler::moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos)
 {
-    // TODO: snap to (x, y) key of vertices map
-
     for (const auto i : indices.left) {
         auto &tile = tiles_.at(static_cast<size_t>(i));
         tile.normBottomRight.setX(normPos.x());
