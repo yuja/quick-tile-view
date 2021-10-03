@@ -191,20 +191,27 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
 
     const auto sp0 = tiles_.at(static_cast<size_t>(index)).normTopLeft;
     const auto sp1 = tiles_.at(static_cast<size_t>(index)).normBottomRight;
-    const qreal w = (orientation == Qt::Horizontal ? 1.0 / count : 1.0) * (sp1.x() - sp0.x());
-    const qreal h = (orientation == Qt::Horizontal ? 1.0 : 1.0 / count) * (sp1.y() - sp0.y());
-    const qreal xk = orientation == Qt::Horizontal ? 1.0 : 0.0;
-    const qreal yk = orientation == Qt::Horizontal ? 0.0 : 1.0;
 
-    // Insert new tile and adjust indices.
-    // TODO: preserve original (x, y) value if unchanged
-    tiles_.at(static_cast<size_t>(index)).normBottomRight = { sp0.x() + w, sp0.y() + h };
+    // Insert new tile and adjust indices. Unchanged (x, y) values must be preserved.
     std::vector<Tile> newTiles;
-    for (int i = 1; i < count; ++i) {
+    if (orientation == Qt::Horizontal) {
+        const qreal w = (sp1.x() - sp0.x()) / count;
         // TODO: find closest (x, y) key from vertices map in pixel resolution
-        const qreal x0 = sp0.x() + i * xk * w;
-        const qreal y0 = sp0.y() + i * yk * h;
-        newTiles.push_back(createTile({ x0, y0 }, { x0 + w, y0 + h }, index + i));
+        tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(sp0.x() + w);
+        for (int i = 1; i < count; ++i) {
+            const qreal x0 = sp0.x() + i * w;
+            const qreal x1 = (i < count - 1) ? sp0.x() + (i + 1) * w : sp1.x();
+            newTiles.push_back(createTile({ x0, sp0.y() }, { x1, sp1.y() }, index + i));
+        }
+    } else {
+        const qreal h = (sp1.y() - sp0.y()) / count;
+        // TODO: find closest (x, y) key from vertices map in pixel resolution
+        tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(sp0.y() + h);
+        for (int i = 1; i < count; ++i) {
+            const qreal y0 = sp0.y() + i * h;
+            const qreal y1 = (i < count - 1) ? sp0.y() + (i + 1) * h : sp1.y();
+            newTiles.push_back(createTile({ sp0.x(), y0 }, { sp1.x(), y1 }, index + i));
+        }
     }
     tiles_.insert(tiles_.begin() + index + 1, std::make_move_iterator(newTiles.begin()),
                   std::make_move_iterator(newTiles.end()));
