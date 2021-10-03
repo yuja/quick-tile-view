@@ -213,13 +213,13 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     const auto sp1 = tiles_.at(static_cast<size_t>(index)).normBottomRight;
 
     // Insert new tile and adjust indices. Unchanged (x, y) values must be preserved.
+    // New borders may snap to existing vertices, but shouldn't move excessively compared
+    // to the tile width/height. Otherwise the tiles would be stacked.
     std::vector<Tile> newTiles;
     if (orientation == Qt::Horizontal) {
-        const auto snapX = [this](qreal x) {
-            return snapToVertices(horizontalVertices_, x,
-                                  snapPixelSize / extendedOuterPixelRect().width());
-        };
         const qreal w = (sp1.x() - sp0.x()) / count;
+        const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * w);
+        const auto snapX = [this, e](qreal x) { return snapToVertices(horizontalVertices_, x, e); };
         tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(snapX(sp0.x() + w));
         for (int i = 1; i < count; ++i) {
             const qreal x0 = snapX(sp0.x() + i * w);
@@ -227,11 +227,9 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
             newTiles.push_back(createTile({ x0, sp0.y() }, { x1, sp1.y() }, index + i));
         }
     } else {
-        const auto snapY = [this](qreal y) {
-            return snapToVertices(verticalVertices_, y,
-                                  snapPixelSize / extendedOuterPixelRect().height());
-        };
         const qreal h = (sp1.y() - sp0.y()) / count;
+        const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * h);
+        const auto snapY = [this, e](qreal y) { return snapToVertices(verticalVertices_, y, e); };
         tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(snapY(sp0.y() + h));
         for (int i = 1; i < count; ++i) {
             const qreal y0 = snapY(sp0.y() + i * h);
