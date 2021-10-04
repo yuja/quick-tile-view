@@ -219,22 +219,30 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     if (orientation == Qt::Horizontal) {
         const qreal w = (sp1.x() - sp0.x()) / count;
         const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * w);
-        const auto snapX = [this, e](qreal x) { return snapToVertices(horizontalVertices_, x, e); };
-        tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(snapX(sp0.x() + w));
+        std::vector<qreal> xs { sp0.x() };
         for (int i = 1; i < count; ++i) {
-            const qreal x0 = snapX(sp0.x() + i * w);
-            const qreal x1 = (i < count - 1) ? snapX(sp0.x() + (i + 1) * w) : sp1.x();
-            newTiles.push_back(createTile({ x0, sp0.y() }, { x1, sp1.y() }, index + i));
+            xs.push_back(snapToVertices(horizontalVertices_, sp0.x() + i * w, e));
+        }
+        xs.push_back(sp1.x());
+        tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(xs.at(1));
+        for (int i = 1; i < count; ++i) {
+            newTiles.push_back(createTile({ xs.at(static_cast<size_t>(i)), sp0.y() },
+                                          { xs.at(static_cast<size_t>(i + 1)), sp1.y() },
+                                          index + i));
         }
     } else {
         const qreal h = (sp1.y() - sp0.y()) / count;
         const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * h);
-        const auto snapY = [this, e](qreal y) { return snapToVertices(verticalVertices_, y, e); };
-        tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(snapY(sp0.y() + h));
+        std::vector<qreal> ys { sp0.y() };
         for (int i = 1; i < count; ++i) {
-            const qreal y0 = snapY(sp0.y() + i * h);
-            const qreal y1 = (i < count - 1) ? snapY(sp0.y() + (i + 1) * h) : sp1.y();
-            newTiles.push_back(createTile({ sp0.x(), y0 }, { sp1.x(), y1 }, index + i));
+            ys.push_back(snapToVertices(verticalVertices_, sp0.y() + i * h, e));
+        }
+        ys.push_back(sp1.y());
+        tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(ys.at(1));
+        for (int i = 1; i < count; ++i) {
+            newTiles.push_back(createTile({ sp0.x(), ys.at(static_cast<size_t>(i)) },
+                                          { sp1.x(), ys.at(static_cast<size_t>(i + 1)) },
+                                          index + i));
         }
     }
     tiles_.insert(tiles_.begin() + index + 1, std::make_move_iterator(newTiles.begin()),
