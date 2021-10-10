@@ -68,11 +68,16 @@ private:
 
     using UniqueItemPtr = std::unique_ptr<QQuickItem, ItemDeleter>;
 
+    struct KeyRect
+    {
+        qreal x0, y0;
+        qreal x1, y1;
+    };
+
     struct Tile
     {
         // These points can be used as map keys.
-        QPointF normTopLeft;
-        QPointF normBottomRight;
+        KeyRect normRect;
         // Item and context may be nullptr if the corresponding component is unspecified
         // or invalid.
         UniqueItemPtr item;
@@ -104,7 +109,7 @@ private:
     };
 
     void recreateTiles();
-    Tile createTile(const QPointF &normTopLeft, const QPointF &normBottomRight, int index);
+    Tile createTile(const KeyRect &normRect, int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
     createHandleItem(Qt::Orientation orientation);
