@@ -73,7 +73,6 @@ public:
     void moveTo(const QPointF &normPos, const QSizeF &snapSize);
     void resetMovingState();
 
-    void accumulateTiles();
     void resizeTiles(const QRectF &outerPixelRect, const QSizeF &handlePixelSize);
 
 private:
@@ -90,10 +89,12 @@ private:
                                     const QRectF &outerPixelRect,
                                     const QSizeF &handlePixelSize) const;
     void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos);
+    void invalidateVerticesMap();
+    void ensureVerticesMapBuilt();
 
     std::vector<Tile> tiles_;
-    VerticesMap xyVerticesMap_; // x: {y: v}, updated by accumulateTiles()
-    VerticesMap yxVerticesMap_; // y: {x: v}, updated by accumulateTiles()
+    VerticesMap xyVerticesMap_; // x: {y: v}, updated by ensureVerticesMapBuilt()
+    VerticesMap yxVerticesMap_; // y: {x: v}, updated by ensureVerticesMapBuilt()
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
     VerticesMap preMoveXyVerticesMap_;

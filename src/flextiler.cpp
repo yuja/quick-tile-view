@@ -241,7 +241,6 @@ void FlexTiler::geometryChange(const QRectF &newGeometry, const QRectF &oldGeome
 
 void FlexTiler::updatePolish()
 {
-    layouter_.accumulateTiles(); // TODO: no need to rebuild vertices map on geometryChange()
     layouter_.resizeTiles(extendedOuterPixelRect(),
                           { horizontalHandlePixelWidth_, verticalHandlePixelHeight_ });
 }

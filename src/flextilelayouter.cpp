@@ -58,10 +58,8 @@ FlexTileLayouter::findTileByHandleItem(const QQuickItem *item) const
 void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
                              std::vector<Tile> &&newTiles, const QSizeF &snapSize)
 {
-    // Invalidate grid of vertices, which will be recalculated later.
-    xyVerticesMap_.clear();
-    xyVerticesMap_.clear();
     resetMovingState();
+    ensureVerticesMapBuilt();
 
     // Insert new tile and adjust indices. Unchanged (x, y) values must be preserved.
     // New borders may snap to existing vertices, but shouldn't move excessively compared
@@ -109,10 +107,15 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
             a->setIndex(static_cast<int>(i));
         }
     }
+
+    invalidateVerticesMap();
 }
 
 bool FlexTileLayouter::close(size_t index)
 {
+    resetMovingState();
+    ensureVerticesMapBuilt();
+
     const auto collectLine = [](auto linep, qreal pos0, qreal pos1) -> std::vector<int> {
         std::vector<int> indices;
         auto vp = linep->second.find(pos0);
@@ -177,11 +180,6 @@ bool FlexTileLayouter::close(size_t index)
         return false;
     }
 
-    // Invalidate grid of vertices, which will be recalculated later.
-    xyVerticesMap_.clear();
-    xyVerticesMap_.clear();
-    resetMovingState();
-
     // Adjust tile indices and remove it.
     for (size_t i = index + 1; i < tiles_.size(); ++i) {
         if (auto *a = tileAttached(tiles_.at(i).item.get())) {
@@ -190,6 +188,7 @@ bool FlexTileLayouter::close(size_t index)
     }
     tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
 
+    invalidateVerticesMap();
     return true;
 }
 
@@ -202,6 +201,7 @@ bool FlexTileLayouter::isMoving() const
 void FlexTileLayouter::startMoving(size_t index, Qt::Orientations orientations,
                                    const QRectF &outerPixelRect, const QSizeF &handlePixelSize)
 {
+    ensureVerticesMapBuilt();
     movingTiles_ = collectAdjacentTiles(index, orientations);
     movableNormRect_ =
             calculateMovableNormRect(index, movingTiles_, outerPixelRect, handlePixelSize);
@@ -352,13 +352,24 @@ void FlexTileLayouter::moveAdjacentTiles(const AdjacentIndices &indices, const Q
         auto &tile = tiles_.at(static_cast<size_t>(i));
         tile.normRect.y0 = normPos.y();
     }
+
+    invalidateVerticesMap();
 }
 
-void FlexTileLayouter::accumulateTiles()
+void FlexTileLayouter::invalidateVerticesMap()
 {
-    // Collect all possible vertices.
     xyVerticesMap_.clear();
     yxVerticesMap_.clear();
+}
+
+void FlexTileLayouter::ensureVerticesMapBuilt()
+{
+    Q_ASSERT(!tiles_.empty());
+    if (!xyVerticesMap_.empty())
+        return;
+
+    // Collect all possible vertices.
+    Q_ASSERT(xyVerticesMap_.empty() && yxVerticesMap_.empty());
     for (const auto &tile : tiles_) {
         const qreal x0 = tile.normRect.x0;
         const qreal y0 = tile.normRect.y0;
@@ -461,6 +472,8 @@ void FlexTileLayouter::accumulateTiles()
 
 void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &handlePixelSize)
 {
+    ensureVerticesMapBuilt();
+
     const auto mapToPixelX = [&outerPixelRect](qreal x) {
         return outerPixelRect.left() + x * outerPixelRect.width();
     };
