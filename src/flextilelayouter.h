@@ -70,13 +70,13 @@ public:
     bool close(size_t index);
 
     bool isMoving() const;
-    void startMoving(size_t index, Qt::Orientations orientations);
+    void startMoving(size_t index, Qt::Orientations orientations, const QRectF &outerPixelRect,
+                     const QSizeF &handlePixelSize);
     void moveTo(const QPointF &normPos, const QSizeF &snapSize);
     void resetMovingState();
 
-    QRectF extendedOuterPixelRect() const;
     void accumulateTiles();
-    void resizeTiles();
+    void resizeTiles(const QRectF &outerPixelRect, const QSizeF &handlePixelSize);
 
 signals:
     void countChanged();
@@ -91,14 +91,14 @@ private:
     };
 
     AdjacentIndices collectAdjacentTiles(size_t index, Qt::Orientations orientations) const;
-    QRectF calculateMovableNormRect(size_t index, const AdjacentIndices &adjacentIndices) const;
+    QRectF calculateMovableNormRect(size_t index, const AdjacentIndices &adjacentIndices,
+                                    const QRectF &outerPixelRect,
+                                    const QSizeF &handlePixelSize) const;
     void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos);
 
     std::vector<Tile> tiles_;
     VerticesMap xyVerticesMap_; // x: {y: v}, updated by accumulateTiles()
     VerticesMap yxVerticesMap_; // y: {x: v}, updated by accumulateTiles()
-    qreal horizontalHandlePixelWidth_ = 0.0;
-    qreal verticalHandlePixelHeight_ = 0.0;
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
     VerticesMap preMoveXyVerticesMap_;
