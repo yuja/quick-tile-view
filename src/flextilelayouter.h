@@ -75,7 +75,7 @@ public:
 
     void split(size_t index, Qt::Orientation orientation, std::vector<Tile> &&newTiles,
                const QSizeF &snapSize);
-    Q_INVOKABLE void close(int index);
+    bool close(size_t index);
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
     QRectF calculateMovableNormRect(int index, const AdjacentIndices &adjacentIndices) const;

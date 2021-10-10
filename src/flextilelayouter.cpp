@@ -1,5 +1,4 @@
 #include <QMouseEvent>
-#include <QtQml>
 #include <algorithm>
 #include <cmath>
 #include <iterator>
@@ -118,13 +117,8 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
     emit countChanged();
 }
 
-void FlexTileLayouter::close(int index)
+bool FlexTileLayouter::close(size_t index)
 {
-    if (index < 0 || index >= static_cast<int>(tiles_.size())) {
-        qmlWarning(this) << "tile index out of range:" << index;
-        return;
-    }
-
     const auto collectLine = [](auto linep, qreal pos0, qreal pos1) -> std::vector<int> {
         std::vector<int> indices;
         auto vp = linep->second.find(pos0);
@@ -186,8 +180,7 @@ void FlexTileLayouter::close(int index)
             tile.normRect.y0 = origRect.y0;
         }
     } else {
-        qmlInfo(this) << "no collapsible tiles found for " << index;
-        return;
+        return false;
     }
 
     // Invalidate grid of vertices, which will be recalculated later.
@@ -196,15 +189,16 @@ void FlexTileLayouter::close(int index)
     resetMovingState();
 
     // Adjust tile indices and remove it.
-    for (size_t i = static_cast<size_t>(index) + 1; i < tiles_.size(); ++i) {
+    for (size_t i = index + 1; i < tiles_.size(); ++i) {
         if (auto *a = tileAttached(tiles_.at(i).item.get())) {
             a->setIndex(static_cast<int>(i - 1));
         }
     }
-    tiles_.erase(tiles_.begin() + index);
+    tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
 
     polish();
     emit countChanged();
+    return true;
 }
 
 void FlexTileLayouter::mousePressEvent(QMouseEvent *event)
