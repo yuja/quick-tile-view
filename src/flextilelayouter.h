@@ -68,15 +68,6 @@ public:
         std::vector<int> bottom;
     };
 
-    QQmlComponent *delegate() { return tileDelegate_; }
-    void setDelegate(QQmlComponent *delegate);
-
-    QQmlComponent *horizontalHandle() { return horizontalHandle_; }
-    void setHorizontalHandle(QQmlComponent *handle);
-
-    QQmlComponent *verticalHandle() { return verticalHandle_; }
-    void setVerticalHandle(QQmlComponent *handle);
-
     size_t count() const { return tiles_.size(); }
     const Tile &tileAt(size_t index) const { return tiles_.at(index); }
     Tile &tileAt(size_t index) { return tiles_.at(index); }
@@ -94,9 +85,6 @@ public:
     void resizeTiles();
 
 signals:
-    void delegateChanged();
-    void horizontalHandleChanged();
-    void verticalHandleChanged();
     void countChanged();
 
 protected:
@@ -107,18 +95,9 @@ protected:
     void updatePolish() override;
 
 private:
-    void recreateTiles();
-    Tile createTile(const KeyRect &normRect, int index);
-    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
-    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
-    createHandleItem(Qt::Orientation orientation);
-
     std::vector<Tile> tiles_;
     VerticesMap xyVerticesMap_; // x: {y: v}, updated by accumulateTiles()
     VerticesMap yxVerticesMap_; // y: {x: v}, updated by accumulateTiles()
-    QPointer<QQmlComponent> tileDelegate_ = nullptr;
-    QPointer<QQmlComponent> horizontalHandle_ = nullptr;
-    QPointer<QQmlComponent> verticalHandle_ = nullptr;
     qreal horizontalHandlePixelWidth_ = 0.0;
     qreal verticalHandlePixelHeight_ = 0.0;
     AdjacentIndices movingTiles_;
