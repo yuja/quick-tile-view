@@ -232,7 +232,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
         }
     } else {
         const qreal h = (sp1.y() - sp0.y()) / count;
-        const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * h);
+        const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().height(), 0.1 * h);
         std::vector<qreal> ys { sp0.y() };
         for (int i = 1; i < count; ++i) {
             ys.push_back(snapToVertices(yxVerticesMap_, sp0.y() + i * h, e));
