@@ -57,8 +57,6 @@ void FlexTiler::setVerticalHandle(QQmlComponent *handle)
 
 void FlexTiler::recreateTiles()
 {
-    horizontalHandlePixelWidth_ = 0.0;
-    verticalHandlePixelHeight_ = 0.0;
     for (size_t i = 0; i < layouter_.count(); ++i) {
         auto &tile = layouter_.tileAt(i);
         tile = createTile(tile.normRect, static_cast<int>(i));
@@ -69,8 +67,11 @@ void FlexTiler::recreateTiles()
 auto FlexTiler::createTile(const KeyRect &normRect, int index) -> Tile
 {
     auto [item, context] = createTileItem(index);
-    auto [hHandleItem, hHandleContext] = createHandleItem(Qt::Horizontal);
-    auto [vHandleItem, vHandleContext] = createHandleItem(Qt::Vertical);
+    auto [hHandleItem, hHandleContext] = createHandleItem(horizontalHandle_);
+    auto [vHandleItem, vHandleContext] = createHandleItem(verticalHandle_);
+    // Apply identical width/height to all handles to make the layouter simple.
+    horizontalHandlePixelWidth_ = hHandleItem ? hHandleItem->implicitWidth() : 0.0;
+    verticalHandlePixelHeight_ = vHandleItem ? vHandleItem->implicitHeight() : 0.0;
     return {
         normRect,
         std::move(item),
@@ -110,10 +111,9 @@ auto FlexTiler::createTileItem(int index) -> std::tuple<UniqueItemPtr, std::uniq
     }
 }
 
-auto FlexTiler::createHandleItem(Qt::Orientation orientation)
+auto FlexTiler::createHandleItem(QQmlComponent *component)
         -> std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
 {
-    auto *component = (orientation == Qt::Horizontal ? horizontalHandle_ : verticalHandle_).get();
     if (!component)
         return {};
 
@@ -129,12 +129,6 @@ auto FlexTiler::createHandleItem(Qt::Orientation orientation)
         item->setParentItem(this);
         item->setVisible(false);
         component->completeCreate();
-        // Apply identical width/height to all handles to make the layouter simple.
-        if (orientation == Qt::Horizontal) {
-            horizontalHandlePixelWidth_ = item->implicitWidth();
-        } else {
-            verticalHandlePixelHeight_ = item->implicitHeight();
-        }
         return { std::move(item), std::move(context) };
     } else {
         qmlWarning(this) << "handle component does not create an item";
