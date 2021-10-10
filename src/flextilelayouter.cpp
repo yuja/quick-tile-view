@@ -13,8 +13,6 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
     return qobject_cast<FlexTilerAttached *>(qmlAttachedPropertiesObject<FlexTiler>(item));
 }
 
-constexpr qreal snapPixelSize = 5.0;
-
 template<typename V>
 qreal snapToVertices(const std::map<qreal, std::map<qreal, V>> &vertices, qreal key, qreal epsilon)
 {
@@ -201,61 +199,43 @@ bool FlexTileLayouter::close(size_t index)
     return true;
 }
 
-void FlexTileLayouter::mousePressEvent(QMouseEvent *event)
+bool FlexTileLayouter::isMoving() const
 {
-    const auto *item = childAt(event->position().x(), event->position().y());
-    const auto [index, orientations] = findTileByHandleItem(item);
-    if (index < 0)
-        return;
-
-    // Determine tiles to be moved on press because the grid may change while moving
-    // the selected handle.
-    movingTiles_ = collectAdjacentTiles(index, orientations);
-    movableNormRect_ = calculateMovableNormRect(index, movingTiles_);
-    movingHandleGrabPixelOffset_ = event->position() - item->position();
-    preMoveXyVerticesMap_ = xyVerticesMap_;
-    preMoveYxVerticesMap_ = yxVerticesMap_;
-    setKeepMouseGrab(true);
+    return !movingTiles_.left.empty() || !movingTiles_.right.empty() || !movingTiles_.top.empty()
+            || !movingTiles_.bottom.empty();
 }
 
-void FlexTileLayouter::mouseMoveEvent(QMouseEvent *event)
+void FlexTileLayouter::startMoving(size_t index, Qt::Orientations orientations)
 {
-    if (movingTiles_.left.empty() && movingTiles_.right.empty() && movingTiles_.top.empty()
-        && movingTiles_.bottom.empty())
-        return;
+    movingTiles_ = collectAdjacentTiles(index, orientations);
+    movableNormRect_ = calculateMovableNormRect(index, movingTiles_);
+    preMoveXyVerticesMap_ = xyVerticesMap_;
+    preMoveYxVerticesMap_ = yxVerticesMap_;
+}
+
+void FlexTileLayouter::moveTo(const QPointF &normPos, const QSizeF &snapSize)
+{
+    Q_ASSERT(isMoving());
     if (movableNormRect_.isEmpty())
         return;
-
-    const auto outerRect = extendedOuterPixelRect();
-    const auto pixelPos = event->position() - movingHandleGrabPixelOffset_;
-    const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
-                          (pixelPos.y() - outerRect.top()) / outerRect.height());
-    const QPointF snappedNormPos(snapToVertices(preMoveXyVerticesMap_, normPos.x(),
-                                                snapPixelSize / extendedOuterPixelRect().width()),
-                                 snapToVertices(preMoveYxVerticesMap_, normPos.y(),
-                                                snapPixelSize / extendedOuterPixelRect().height()));
+    const QPointF snappedNormPos(
+            snapToVertices(preMoveXyVerticesMap_, normPos.x(), snapSize.width()),
+            snapToVertices(preMoveYxVerticesMap_, normPos.y(), snapSize.height()));
     const QPointF clampedNormPos(
             std::clamp(snappedNormPos.x(), movableNormRect_.left(), movableNormRect_.right()),
             std::clamp(snappedNormPos.y(), movableNormRect_.top(), movableNormRect_.bottom()));
     moveAdjacentTiles(movingTiles_, clampedNormPos);
 }
 
-void FlexTileLayouter::mouseReleaseEvent(QMouseEvent * /*event*/)
-{
-    resetMovingState();
-    setKeepMouseGrab(false);
-}
-
 void FlexTileLayouter::resetMovingState()
 {
     movingTiles_ = {};
     movableNormRect_ = {};
-    movingHandleGrabPixelOffset_ = {};
     preMoveXyVerticesMap_.clear();
     preMoveYxVerticesMap_.clear();
 }
 
-auto FlexTileLayouter::collectAdjacentTiles(int index, Qt::Orientations orientations) const
+auto FlexTileLayouter::collectAdjacentTiles(size_t index, Qt::Orientations orientations) const
         -> AdjacentIndices
 {
     const auto collect = [](const VerticesMap &vertices, qreal key1,
@@ -290,7 +270,7 @@ auto FlexTileLayouter::collectAdjacentTiles(int index, Qt::Orientations orientat
     };
 
     AdjacentIndices indices;
-    const auto &rect = tiles_.at(static_cast<size_t>(index)).normRect;
+    const auto &rect = tiles_.at(index).normRect;
     if (orientations & Qt::Horizontal) {
         std::tie(indices.left, indices.right) = collect(xyVerticesMap_, rect.x0, rect.y0);
     }
@@ -301,7 +281,7 @@ auto FlexTileLayouter::collectAdjacentTiles(int index, Qt::Orientations orientat
     return indices;
 }
 
-QRectF FlexTileLayouter::calculateMovableNormRect(int index,
+QRectF FlexTileLayouter::calculateMovableNormRect(size_t index,
                                                   const AdjacentIndices &adjacentIndices) const
 {
     const auto outerRect = extendedOuterPixelRect();
@@ -343,7 +323,7 @@ QRectF FlexTileLayouter::calculateMovableNormRect(int index,
         bottom = std::min(y, bottom);
     }
 
-    const auto &targetTile = tiles_.at(static_cast<size_t>(index));
+    const auto &targetTile = tiles_.at(index);
     const qreal marginX = horizontalHandlePixelWidth_ / outerRect.width();
     const qreal marginY = verticalHandlePixelHeight_ / outerRect.height();
     return {

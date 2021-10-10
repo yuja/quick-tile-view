@@ -60,14 +60,6 @@ public:
 
     using VerticesMap = std::map<qreal, std::map<qreal, Vertex>>; // x: {y: v} or y: {x: v}
 
-    struct AdjacentIndices
-    {
-        std::vector<int> left;
-        std::vector<int> right;
-        std::vector<int> top;
-        std::vector<int> bottom;
-    };
-
     size_t count() const { return tiles_.size(); }
     const Tile &tileAt(size_t index) const { return tiles_.at(index); }
     Tile &tileAt(size_t index) { return tiles_.at(index); }
@@ -76,10 +68,12 @@ public:
     void split(size_t index, Qt::Orientation orientation, std::vector<Tile> &&newTiles,
                const QSizeF &snapSize);
     bool close(size_t index);
+
+    bool isMoving() const;
+    void startMoving(size_t index, Qt::Orientations orientations);
+    void moveTo(const QPointF &normPos, const QSizeF &snapSize);
     void resetMovingState();
-    AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
-    QRectF calculateMovableNormRect(int index, const AdjacentIndices &adjacentIndices) const;
-    void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos);
+
     QRectF extendedOuterPixelRect() const;
     void accumulateTiles();
     void resizeTiles();
@@ -88,13 +82,22 @@ signals:
     void countChanged();
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
     void updatePolish() override;
 
 private:
+    struct AdjacentIndices
+    {
+        std::vector<int> left;
+        std::vector<int> right;
+        std::vector<int> top;
+        std::vector<int> bottom;
+    };
+
+    AdjacentIndices collectAdjacentTiles(size_t index, Qt::Orientations orientations) const;
+    QRectF calculateMovableNormRect(size_t index, const AdjacentIndices &adjacentIndices) const;
+    void moveAdjacentTiles(const AdjacentIndices &indices, const QPointF &normPos);
+
     std::vector<Tile> tiles_;
     VerticesMap xyVerticesMap_; // x: {y: v}, updated by accumulateTiles()
     VerticesMap yxVerticesMap_; // y: {x: v}, updated by accumulateTiles()
@@ -102,7 +105,6 @@ private:
     qreal verticalHandlePixelHeight_ = 0.0;
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
-    QPointF movingHandleGrabPixelOffset_;
     VerticesMap preMoveXyVerticesMap_;
     VerticesMap preMoveYxVerticesMap_;
 };
