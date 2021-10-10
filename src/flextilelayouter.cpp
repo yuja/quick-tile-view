@@ -32,10 +32,9 @@ qreal snapToVertices(const std::map<qreal, std::map<qreal, V>> &vertices, qreal 
 }
 }
 
-FlexTileLayouter::FlexTileLayouter(QQuickItem *parent) : QQuickItem(parent)
+FlexTileLayouter::FlexTileLayouter()
 {
     tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
-    setAcceptedMouseButtons(Qt::LeftButton);
 }
 
 FlexTileLayouter::~FlexTileLayouter() = default;
@@ -110,8 +109,6 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
             a->setIndex(static_cast<int>(i));
         }
     }
-
-    emit countChanged();
 }
 
 bool FlexTileLayouter::close(size_t index)
@@ -193,7 +190,6 @@ bool FlexTileLayouter::close(size_t index)
     }
     tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
 
-    emit countChanged();
     return true;
 }
 

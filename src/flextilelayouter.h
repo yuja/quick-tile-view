@@ -1,8 +1,6 @@
 #pragma once
 #include <QPoint>
 #include <QPointF>
-#include <QPointer>
-#include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QRectF>
@@ -12,13 +10,13 @@
 #include <tuple>
 #include <vector>
 
-class FlexTileLayouter : public QQuickItem
+class FlexTileLayouter
 {
-    Q_OBJECT
-
 public:
-    explicit FlexTileLayouter(QQuickItem *parent = nullptr);
-    ~FlexTileLayouter() override;
+    FlexTileLayouter();
+    FlexTileLayouter(const FlexTileLayouter &) = delete;
+    void operator=(const FlexTileLayouter &) = delete;
+    ~FlexTileLayouter();
 
     class ItemDeleter
     {
@@ -77,9 +75,6 @@ public:
 
     void accumulateTiles();
     void resizeTiles(const QRectF &outerPixelRect, const QSizeF &handlePixelSize);
-
-signals:
-    void countChanged();
 
 private:
     struct AdjacentIndices
