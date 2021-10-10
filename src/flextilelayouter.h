@@ -81,7 +81,7 @@ public:
     Tile &tileAt(size_t index) { return tiles_.at(index); }
     std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
 
-    Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
+    void split(size_t index, Qt::Orientation orientation, std::vector<Tile> &&newTiles);
     Q_INVOKABLE void close(int index);
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;

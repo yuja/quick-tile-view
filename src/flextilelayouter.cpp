@@ -176,15 +176,9 @@ FlexTileLayouter::findTileByHandleItem(const QQuickItem *item) const
     return { -1, {} };
 }
 
-void FlexTileLayouter::split(int index, Qt::Orientation orientation, int count)
+void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
+                             std::vector<Tile> &&newTiles)
 {
-    if (index < 0 || index >= static_cast<int>(tiles_.size())) {
-        qmlWarning(this) << "tile index out of range:" << index;
-        return;
-    }
-    if (count < 2)
-        return;
-
     // Invalidate grid of vertices, which will be recalculated later.
     xyVerticesMap_.clear();
     xyVerticesMap_.clear();
@@ -193,43 +187,45 @@ void FlexTileLayouter::split(int index, Qt::Orientation orientation, int count)
     // Insert new tile and adjust indices. Unchanged (x, y) values must be preserved.
     // New borders may snap to existing vertices, but shouldn't move excessively compared
     // to the tile width/height. Otherwise the tiles would be stacked.
-    const auto origRect = tiles_.at(static_cast<size_t>(index)).normRect;
-    std::vector<Tile> newTiles;
+    const auto origRect = tiles_.at(index).normRect;
     if (orientation == Qt::Horizontal) {
-        const qreal w = (origRect.x1 - origRect.x0) / count;
+        const qreal w = (origRect.x1 - origRect.x0) / static_cast<qreal>(newTiles.size() + 1);
         const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * w);
-        std::vector<qreal> xs { origRect.x0 };
-        for (int i = 1; i < count; ++i) {
-            xs.push_back(snapToVertices(xyVerticesMap_, origRect.x0 + i * w, e));
+        std::vector<qreal> xs;
+        for (size_t i = 0; i < newTiles.size(); ++i) {
+            xs.push_back(
+                    snapToVertices(xyVerticesMap_, origRect.x0 + static_cast<qreal>(i + 1) * w, e));
         }
         xs.push_back(origRect.x1);
 
-        tiles_.at(static_cast<size_t>(index)).normRect.x1 = xs.at(1);
-        for (int i = 1; i < count; ++i) {
-            const qreal x0 = xs.at(static_cast<size_t>(i));
-            const qreal x1 = xs.at(static_cast<size_t>(i + 1));
-            newTiles.push_back(createTile({ x0, origRect.y0, x1, origRect.y1 }, index + i));
+        tiles_.at(index).normRect.x1 = xs.at(0);
+        for (size_t i = 0; i < newTiles.size(); ++i) {
+            const qreal x0 = xs.at(i);
+            const qreal x1 = xs.at(i + 1);
+            newTiles.at(i).normRect = { x0, origRect.y0, x1, origRect.y1 };
         }
     } else {
-        const qreal h = (origRect.y1 - origRect.y0) / count;
+        const qreal h = (origRect.y1 - origRect.y0) / static_cast<qreal>(newTiles.size() + 1);
         const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().height(), 0.1 * h);
-        std::vector<qreal> ys { origRect.y0 };
-        for (int i = 1; i < count; ++i) {
-            ys.push_back(snapToVertices(yxVerticesMap_, origRect.y0 + i * h, e));
+        std::vector<qreal> ys;
+        for (size_t i = 0; i < newTiles.size(); ++i) {
+            ys.push_back(
+                    snapToVertices(yxVerticesMap_, origRect.y0 + static_cast<qreal>(i + 1) * h, e));
         }
         ys.push_back(origRect.y1);
 
-        tiles_.at(static_cast<size_t>(index)).normRect.y1 = ys.at(1);
-        for (int i = 1; i < count; ++i) {
-            const qreal y0 = ys.at(static_cast<size_t>(i));
-            const qreal y1 = ys.at(static_cast<size_t>(i + 1));
-            newTiles.push_back(createTile({ origRect.x0, y0, origRect.x1, y1 }, index + i));
+        tiles_.at(index).normRect.y1 = ys.at(0);
+        for (size_t i = 0; i < newTiles.size(); ++i) {
+            const qreal y0 = ys.at(i);
+            const qreal y1 = ys.at(i + 1);
+            newTiles.at(i).normRect = { origRect.x0, y0, origRect.x1, y1 };
         }
     }
 
-    tiles_.insert(tiles_.begin() + index + 1, std::make_move_iterator(newTiles.begin()),
+    tiles_.insert(tiles_.begin() + static_cast<ptrdiff_t>(index) + 1,
+                  std::make_move_iterator(newTiles.begin()),
                   std::make_move_iterator(newTiles.end()));
-    for (size_t i = static_cast<size_t>(index + count); i < tiles_.size(); ++i) {
+    for (size_t i = index + newTiles.size() + 1; i < tiles_.size(); ++i) {
         if (auto *a = tileAttached(tiles_.at(i).item.get())) {
             a->setIndex(static_cast<int>(i));
         }
