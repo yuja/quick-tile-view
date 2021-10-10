@@ -160,21 +160,6 @@ auto FlexTileLayouter::createHandleItem(Qt::Orientation orientation)
     }
 }
 
-int FlexTileLayouter::count() const
-{
-    return static_cast<int>(tiles_.size());
-}
-
-QQuickItem *FlexTileLayouter::itemAt(int index) const
-{
-    if (index < 0 || index >= static_cast<int>(tiles_.size())) {
-        qmlWarning(this) << "tile index out of range:" << index;
-        return nullptr;
-    }
-
-    return tiles_.at(static_cast<size_t>(index)).item.get();
-}
-
 std::tuple<int, Qt::Orientations>
 FlexTileLayouter::findTileByHandleItem(const QQuickItem *item) const
 {

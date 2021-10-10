@@ -76,8 +76,9 @@ public:
     QQmlComponent *verticalHandle() { return verticalHandle_; }
     void setVerticalHandle(QQmlComponent *handle);
 
-    int count() const;
-    Q_INVOKABLE QQuickItem *itemAt(int index) const;
+    size_t count() const { return tiles_.size(); }
+    const Tile &tileAt(size_t index) const { return tiles_.at(index); }
+    Tile &tileAt(size_t index) { return tiles_.at(index); }
     std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
 
     Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
