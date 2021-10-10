@@ -6,6 +6,7 @@
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QRectF>
+#include <QSizeF>
 #include <map>
 #include <memory>
 #include <tuple>
@@ -81,7 +82,8 @@ public:
     Tile &tileAt(size_t index) { return tiles_.at(index); }
     std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
 
-    void split(size_t index, Qt::Orientation orientation, std::vector<Tile> &&newTiles);
+    void split(size_t index, Qt::Orientation orientation, std::vector<Tile> &&newTiles,
+               const QSizeF &snapSize);
     Q_INVOKABLE void close(int index);
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;

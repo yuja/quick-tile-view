@@ -177,7 +177,7 @@ FlexTileLayouter::findTileByHandleItem(const QQuickItem *item) const
 }
 
 void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
-                             std::vector<Tile> &&newTiles)
+                             std::vector<Tile> &&newTiles, const QSizeF &snapSize)
 {
     // Invalidate grid of vertices, which will be recalculated later.
     xyVerticesMap_.clear();
@@ -190,7 +190,7 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
     const auto origRect = tiles_.at(index).normRect;
     if (orientation == Qt::Horizontal) {
         const qreal w = (origRect.x1 - origRect.x0) / static_cast<qreal>(newTiles.size() + 1);
-        const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * w);
+        const qreal e = std::min(snapSize.width(), 0.1 * w);
         std::vector<qreal> xs;
         for (size_t i = 0; i < newTiles.size(); ++i) {
             xs.push_back(
@@ -206,7 +206,7 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
         }
     } else {
         const qreal h = (origRect.y1 - origRect.y0) / static_cast<qreal>(newTiles.size() + 1);
-        const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().height(), 0.1 * h);
+        const qreal e = std::min(snapSize.height(), 0.1 * h);
         std::vector<qreal> ys;
         for (size_t i = 0; i < newTiles.size(); ++i) {
             ys.push_back(
