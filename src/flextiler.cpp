@@ -18,6 +18,7 @@ constexpr qreal snapPixelSize = 5.0;
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
     setAcceptedMouseButtons(Qt::LeftButton);
+    setFlag(ItemIsFocusScope);
 }
 
 FlexTiler::~FlexTiler() = default;

@@ -26,6 +26,7 @@ Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
     splitMap_.push_back({ Qt::Horizontal, std::move(bands), {}, {} });
 
     setAcceptedMouseButtons(Qt::LeftButton);
+    setFlag(ItemIsFocusScope);
 }
 
 Tiler::~Tiler() = default;
