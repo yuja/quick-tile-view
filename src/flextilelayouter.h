@@ -25,35 +25,6 @@ public:
     explicit FlexTileLayouter(QQuickItem *parent = nullptr);
     ~FlexTileLayouter() override;
 
-    QQmlComponent *delegate() { return tileDelegate_; }
-    void setDelegate(QQmlComponent *delegate);
-
-    QQmlComponent *horizontalHandle() { return horizontalHandle_; }
-    void setHorizontalHandle(QQmlComponent *handle);
-
-    QQmlComponent *verticalHandle() { return verticalHandle_; }
-    void setVerticalHandle(QQmlComponent *handle);
-
-    int count() const;
-    Q_INVOKABLE QQuickItem *itemAt(int index) const;
-
-    Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
-    Q_INVOKABLE void close(int index);
-
-signals:
-    void delegateChanged();
-    void horizontalHandleChanged();
-    void verticalHandleChanged();
-    void countChanged();
-
-protected:
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
-    void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
-    void updatePolish() override;
-
-private:
     class ItemDeleter
     {
     public:
@@ -102,12 +73,21 @@ private:
         std::vector<int> bottom;
     };
 
-    void recreateTiles();
-    Tile createTile(const KeyRect &normRect, int index);
-    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
-    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
-    createHandleItem(Qt::Orientation orientation);
+    QQmlComponent *delegate() { return tileDelegate_; }
+    void setDelegate(QQmlComponent *delegate);
+
+    QQmlComponent *horizontalHandle() { return horizontalHandle_; }
+    void setHorizontalHandle(QQmlComponent *handle);
+
+    QQmlComponent *verticalHandle() { return verticalHandle_; }
+    void setVerticalHandle(QQmlComponent *handle);
+
+    int count() const;
+    Q_INVOKABLE QQuickItem *itemAt(int index) const;
     std::tuple<int, Qt::Orientations> findTileByHandleItem(const QQuickItem *item) const;
+
+    Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
+    Q_INVOKABLE void close(int index);
     void resetMovingState();
     AdjacentIndices collectAdjacentTiles(int index, Qt::Orientations orientations) const;
     QRectF calculateMovableNormRect(int index, const AdjacentIndices &adjacentIndices) const;
@@ -115,6 +95,26 @@ private:
     QRectF extendedOuterPixelRect() const;
     void accumulateTiles();
     void resizeTiles();
+
+signals:
+    void delegateChanged();
+    void horizontalHandleChanged();
+    void verticalHandleChanged();
+    void countChanged();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
+    void updatePolish() override;
+
+private:
+    void recreateTiles();
+    Tile createTile(const KeyRect &normRect, int index);
+    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
+    std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
+    createHandleItem(Qt::Orientation orientation);
 
     std::vector<Tile> tiles_;
     VerticesMap xyVerticesMap_; // x: {y: v}, updated by accumulateTiles()
