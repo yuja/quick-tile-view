@@ -111,7 +111,6 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
         }
     }
 
-    polish();
     emit countChanged();
 }
 
@@ -194,7 +193,6 @@ bool FlexTileLayouter::close(size_t index)
     }
     tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
 
-    polish();
     emit countChanged();
     return true;
 }
@@ -355,21 +353,6 @@ void FlexTileLayouter::moveAdjacentTiles(const AdjacentIndices &indices, const Q
         auto &tile = tiles_.at(static_cast<size_t>(i));
         tile.normRect.y0 = normPos.y();
     }
-
-    polish();
-}
-
-void FlexTileLayouter::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
-{
-    QQuickItem::geometryChange(newGeometry, oldGeometry);
-    resetMovingState();
-    polish();
-}
-
-void FlexTileLayouter::updatePolish()
-{
-    accumulateTiles(); // TODO: no need to rebuild vertices map on geometryChange()
-    resizeTiles();
 }
 
 /// Outer bounds including invisible left-top handles.
