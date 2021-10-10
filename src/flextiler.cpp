@@ -205,8 +205,8 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
         return;
 
     // Invalidate grid of vertices, which will be recalculated later.
-    horizontalVertices_.clear();
-    horizontalVertices_.clear();
+    xyVerticesMap_.clear();
+    xyVerticesMap_.clear();
     resetMovingState();
 
     const auto sp0 = tiles_.at(static_cast<size_t>(index)).normTopLeft;
@@ -221,7 +221,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
         const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * w);
         std::vector<qreal> xs { sp0.x() };
         for (int i = 1; i < count; ++i) {
-            xs.push_back(snapToVertices(horizontalVertices_, sp0.x() + i * w, e));
+            xs.push_back(snapToVertices(xyVerticesMap_, sp0.x() + i * w, e));
         }
         xs.push_back(sp1.x());
         tiles_.at(static_cast<size_t>(index)).normBottomRight.setX(xs.at(1));
@@ -235,7 +235,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
         const qreal e = std::min(snapPixelSize / extendedOuterPixelRect().width(), 0.1 * h);
         std::vector<qreal> ys { sp0.y() };
         for (int i = 1; i < count; ++i) {
-            ys.push_back(snapToVertices(verticalVertices_, sp0.y() + i * h, e));
+            ys.push_back(snapToVertices(yxVerticesMap_, sp0.y() + i * h, e));
         }
         ys.push_back(sp1.y());
         tiles_.at(static_cast<size_t>(index)).normBottomRight.setY(ys.at(1));
@@ -295,7 +295,7 @@ void FlexTiler::close(int index)
     const auto orgPos = tiles_.at(static_cast<size_t>(index)).normTopLeft;
     const auto nextPos = tiles_.at(static_cast<size_t>(index)).normBottomRight;
 
-    if (const auto indices = collectPrev(horizontalVertices_, orgPos.x(), orgPos.y(), nextPos.y());
+    if (const auto indices = collectPrev(xyVerticesMap_, orgPos.x(), orgPos.y(), nextPos.y());
         !indices.empty()) {
         // Found left matches, which will be expanded to right.
         for (const int i : indices) {
@@ -303,7 +303,7 @@ void FlexTiler::close(int index)
             tile.normBottomRight.setX(nextPos.x());
         }
     } else if (const auto indices =
-                       collectNext(horizontalVertices_, nextPos.x(), orgPos.y(), nextPos.y());
+                       collectNext(xyVerticesMap_, nextPos.x(), orgPos.y(), nextPos.y());
                !indices.empty()) {
         // Found right matches, which will be expanded to left.
         for (const int i : indices) {
@@ -311,7 +311,7 @@ void FlexTiler::close(int index)
             tile.normTopLeft.setX(orgPos.x());
         }
     } else if (const auto indices =
-                       collectPrev(verticalVertices_, orgPos.y(), orgPos.x(), nextPos.x());
+                       collectPrev(yxVerticesMap_, orgPos.y(), orgPos.x(), nextPos.x());
                !indices.empty()) {
         // Found top matches, which will be expanded to bottom.
         for (const int i : indices) {
@@ -319,7 +319,7 @@ void FlexTiler::close(int index)
             tile.normBottomRight.setY(nextPos.y());
         }
     } else if (const auto indices =
-                       collectNext(verticalVertices_, nextPos.y(), orgPos.x(), nextPos.x());
+                       collectNext(yxVerticesMap_, nextPos.y(), orgPos.x(), nextPos.x());
                !indices.empty()) {
         // Found bottom matches, which will be expanded to top.
         for (const int i : indices) {
@@ -332,8 +332,8 @@ void FlexTiler::close(int index)
     }
 
     // Invalidate grid of vertices, which will be recalculated later.
-    horizontalVertices_.clear();
-    horizontalVertices_.clear();
+    xyVerticesMap_.clear();
+    xyVerticesMap_.clear();
     resetMovingState();
 
     // Adjust tile indices and remove it.
@@ -360,8 +360,8 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
     movingTiles_ = collectAdjacentTiles(index, orientations);
     movableNormRect_ = calculateMovableNormRect(index, movingTiles_);
     movingHandleGrabPixelOffset_ = event->position() - item->position();
-    preMoveHorizontalVertices_ = horizontalVertices_;
-    preMoveVerticalVertices_ = verticalVertices_;
+    preMoveXyVerticesMap_ = xyVerticesMap_;
+    preMoveYxVerticesMap_ = yxVerticesMap_;
     setKeepMouseGrab(true);
 }
 
@@ -377,9 +377,9 @@ void FlexTiler::mouseMoveEvent(QMouseEvent *event)
     const auto pixelPos = event->position() - movingHandleGrabPixelOffset_;
     const QPointF normPos((pixelPos.x() - outerRect.left()) / outerRect.width(),
                           (pixelPos.y() - outerRect.top()) / outerRect.height());
-    const QPointF snappedNormPos(snapToVertices(preMoveHorizontalVertices_, normPos.x(),
+    const QPointF snappedNormPos(snapToVertices(preMoveXyVerticesMap_, normPos.x(),
                                                 snapPixelSize / extendedOuterPixelRect().width()),
-                                 snapToVertices(preMoveVerticalVertices_, normPos.y(),
+                                 snapToVertices(preMoveYxVerticesMap_, normPos.y(),
                                                 snapPixelSize / extendedOuterPixelRect().height()));
     const QPointF clampedNormPos(
             std::clamp(snappedNormPos.x(), movableNormRect_.left(), movableNormRect_.right()),
@@ -398,8 +398,8 @@ void FlexTiler::resetMovingState()
     movingTiles_ = {};
     movableNormRect_ = {};
     movingHandleGrabPixelOffset_ = {};
-    preMoveHorizontalVertices_.clear();
-    preMoveVerticalVertices_.clear();
+    preMoveXyVerticesMap_.clear();
+    preMoveYxVerticesMap_.clear();
 }
 
 auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) const
@@ -439,10 +439,10 @@ auto FlexTiler::collectAdjacentTiles(int index, Qt::Orientations orientations) c
     AdjacentIndices indices;
     const auto &pos = tiles_.at(static_cast<size_t>(index)).normTopLeft;
     if (orientations & Qt::Horizontal) {
-        std::tie(indices.left, indices.right) = collect(horizontalVertices_, pos.x(), pos.y());
+        std::tie(indices.left, indices.right) = collect(xyVerticesMap_, pos.x(), pos.y());
     }
     if (orientations & Qt::Vertical) {
-        std::tie(indices.top, indices.bottom) = collect(verticalVertices_, pos.y(), pos.x());
+        std::tie(indices.top, indices.bottom) = collect(yxVerticesMap_, pos.y(), pos.x());
     }
 
     return indices;
@@ -552,13 +552,13 @@ QRectF FlexTiler::extendedOuterPixelRect() const
 void FlexTiler::accumulateTiles()
 {
     // Collect all possible vertices.
-    horizontalVertices_.clear();
-    verticalVertices_.clear();
+    xyVerticesMap_.clear();
+    yxVerticesMap_.clear();
     for (const auto &tile : tiles_) {
         const qreal x0 = tile.normTopLeft.x();
         const qreal y0 = tile.normTopLeft.y();
-        horizontalVertices_.insert({ x0, {} });
-        verticalVertices_.insert({ y0, {} });
+        xyVerticesMap_.insert({ x0, {} });
+        yxVerticesMap_.insert({ y0, {} });
     }
 
     // Map tiles to vertices per axis
@@ -591,24 +591,24 @@ void FlexTiler::accumulateTiles()
         const qreal y1 = tile.normBottomRight.y();
         Q_ASSERT(x0 <= x1 && y0 <= y1);
 
-        const auto h0 = horizontalVertices_.lower_bound(x0);
-        const auto h1 = horizontalVertices_.lower_bound(x1);
+        const auto h0 = xyVerticesMap_.lower_bound(x0);
+        const auto h1 = xyVerticesMap_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
             p->second.insert({ y0, { static_cast<int>(i), 0.0, p == h0, false } });
         }
 
-        const auto v0 = verticalVertices_.lower_bound(y0);
-        const auto v1 = verticalVertices_.lower_bound(y1);
+        const auto v0 = yxVerticesMap_.lower_bound(y0);
+        const auto v1 = yxVerticesMap_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
             p->second.insert({ x0, { static_cast<int>(i), 0.0, p == v0, false } });
         }
     }
 
     // Insert terminators for convenience.
-    for (auto &[x, vertices] : horizontalVertices_) {
+    for (auto &[x, vertices] : xyVerticesMap_) {
         vertices.insert({ 1.0, { -1, 0.0, false, false } });
     }
-    for (auto &[y, vertices] : verticalVertices_) {
+    for (auto &[y, vertices] : yxVerticesMap_) {
         vertices.insert({ 1.0, { -1, 0.0, false, false } });
     }
 
@@ -650,8 +650,8 @@ void FlexTiler::accumulateTiles()
             Q_ASSERT(v0p == line0->second.end() && v1p == line1->second.end());
         }
     };
-    calculateAdjacentRelation(horizontalVertices_);
-    calculateAdjacentRelation(verticalVertices_);
+    calculateAdjacentRelation(xyVerticesMap_);
+    calculateAdjacentRelation(yxVerticesMap_);
 }
 
 void FlexTiler::resizeTiles()
@@ -669,7 +669,7 @@ void FlexTiler::resizeTiles()
 
     // TODO: fix up pixel size per minimumWidth/Height
 
-    for (const auto &[x, vertices] : horizontalVertices_) {
+    for (const auto &[x, vertices] : xyVerticesMap_) {
         auto v0p = vertices.begin();
         if (v0p == vertices.end())
             continue;
@@ -703,7 +703,7 @@ void FlexTiler::resizeTiles()
         }
     }
 
-    for (const auto &[y, vertices] : verticalVertices_) {
+    for (const auto &[y, vertices] : yxVerticesMap_) {
         auto v0p = vertices.begin();
         if (v0p == vertices.end())
             continue;

@@ -118,8 +118,8 @@ private:
     void resizeTiles();
 
     std::vector<Tile> tiles_;
-    VerticesMap horizontalVertices_; // x: {y: v}, updated by accumulateTiles()
-    VerticesMap verticalVertices_; // y: {x: v}, updated by accumulateTiles()
+    VerticesMap xyVerticesMap_; // x: {y: v}, updated by accumulateTiles()
+    VerticesMap yxVerticesMap_; // y: {x: v}, updated by accumulateTiles()
     QPointer<QQmlComponent> tileDelegate_ = nullptr;
     QPointer<QQmlComponent> horizontalHandle_ = nullptr;
     QPointer<QQmlComponent> verticalHandle_ = nullptr;
@@ -128,8 +128,8 @@ private:
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
     QPointF movingHandleGrabPixelOffset_;
-    VerticesMap preMoveHorizontalVertices_;
-    VerticesMap preMoveVerticalVertices_;
+    VerticesMap preMoveXyVerticesMap_;
+    VerticesMap preMoveYxVerticesMap_;
 };
 
 class FlexTilerAttached : public QObject
