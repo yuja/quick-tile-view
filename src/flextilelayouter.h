@@ -14,12 +14,6 @@
 class FlexTileLayouter : public QQuickItem
 {
     Q_OBJECT
-    Q_PROPERTY(QQmlComponent *delegate READ delegate WRITE setDelegate NOTIFY delegateChanged FINAL)
-    Q_PROPERTY(QQmlComponent *horizontalHandle READ horizontalHandle WRITE setHorizontalHandle
-                       NOTIFY horizontalHandleChanged FINAL)
-    Q_PROPERTY(QQmlComponent *verticalHandle READ verticalHandle WRITE setVerticalHandle NOTIFY
-                       verticalHandleChanged FINAL)
-    Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
 
 public:
     explicit FlexTileLayouter(QQuickItem *parent = nullptr);
