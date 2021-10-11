@@ -10,7 +10,7 @@ QRectF itemRect(const QQuickItem *item)
     return { QPointF(0.0, 0.0), item->size() };
 }
 
-TilerAttached *tileAttached(QQuickItem *item)
+TilerAttached *tileAttached(const QQuickItem *item)
 {
     if (!item)
         return nullptr;

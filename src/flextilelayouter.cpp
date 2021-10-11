@@ -6,7 +6,7 @@
 #include "flextiler.h"
 
 namespace {
-FlexTilerAttached *tileAttached(QQuickItem *item)
+FlexTilerAttached *tileAttached(const QQuickItem *item)
 {
     if (!item)
         return nullptr;
