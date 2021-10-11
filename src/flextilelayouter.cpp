@@ -13,8 +13,7 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
     return qobject_cast<FlexTilerAttached *>(qmlAttachedPropertiesObject<FlexTiler>(item));
 }
 
-template<typename V>
-qreal snapToVertices(const std::map<qreal, std::map<qreal, V>> &vertices, qreal key, qreal epsilon)
+qreal snapToVertices(const FlexTileLayouter::VerticesMap &vertices, qreal key, qreal epsilon)
 {
     const auto start = vertices.lower_bound(key - epsilon);
     if (start == vertices.end())
