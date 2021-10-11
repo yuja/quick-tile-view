@@ -13,14 +13,14 @@ FlexTilerAttached *tileAttached(QQuickItem *item)
     return qobject_cast<FlexTilerAttached *>(qmlAttachedPropertiesObject<FlexTiler>(item));
 }
 
-qreal snapToVertices(const FlexTileLayouter::VerticesMap &vertices, qreal key, qreal epsilon)
+qreal snapToVertices(const FlexTileLayouter::VerticesMap &verticesMap, qreal key, qreal epsilon)
 {
-    const auto start = vertices.lower_bound(key - epsilon);
-    if (start == vertices.end())
+    const auto start = verticesMap.lower_bound(key - epsilon);
+    if (start == verticesMap.end())
         return key;
     qreal bestKey = start->first;
     qreal bestDistance = std::abs(start->first - key);
-    for (auto p = std::next(start); p != vertices.end(); ++p) {
+    for (auto p = std::next(start); p != verticesMap.end(); ++p) {
         const qreal d = std::abs(p->first - key);
         if (d > bestDistance)
             break;
