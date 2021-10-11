@@ -1,5 +1,4 @@
 #pragma once
-#include <QPoint>
 #include <QPointF>
 #include <QQmlContext>
 #include <QQuickItem>
