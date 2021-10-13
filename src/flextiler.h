@@ -67,6 +67,7 @@ private:
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>> createTileItem(int index);
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
     createHandleItem(QQmlComponent *component);
+    void updateTileIndices(int from);
 
     QRectF extendedOuterPixelRect() const;
 

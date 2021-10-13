@@ -138,6 +138,15 @@ auto FlexTiler::createHandleItem(QQmlComponent *component)
     }
 }
 
+void FlexTiler::updateTileIndices(int from)
+{
+    for (size_t i = static_cast<size_t>(from); i < layouter_.count(); ++i) {
+        if (auto *a = tileAttached(layouter_.tileAt(i).item.get())) {
+            a->setIndex(static_cast<int>(i));
+        }
+    }
+}
+
 int FlexTiler::count() const
 {
     return static_cast<int>(layouter_.count());
@@ -170,6 +179,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     const QSizeF snapSize(snapPixelSize / outerRect.width(), snapPixelSize / outerRect.height());
     layouter_.split(static_cast<size_t>(index), orientation, std::move(newTiles), snapSize);
 
+    updateTileIndices(index + count);
     polish();
     emit countChanged();
 }
@@ -186,6 +196,7 @@ void FlexTiler::close(int index)
         return;
     }
 
+    updateTileIndices(index);
     polish();
     emit countChanged();
 }

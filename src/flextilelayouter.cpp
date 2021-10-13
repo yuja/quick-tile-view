@@ -101,11 +101,6 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
     tiles_.insert(tiles_.begin() + static_cast<ptrdiff_t>(index) + 1,
                   std::make_move_iterator(newTiles.begin()),
                   std::make_move_iterator(newTiles.end()));
-    for (size_t i = index + newTiles.size() + 1; i < tiles_.size(); ++i) {
-        if (auto *a = tileAttached(tiles_.at(i).item.get())) {
-            a->setIndex(static_cast<int>(i));
-        }
-    }
 
     invalidateVerticesMap();
 }
@@ -180,11 +175,6 @@ bool FlexTileLayouter::close(size_t index)
     }
 
     tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
-    for (size_t i = index; i < tiles_.size(); ++i) {
-        if (auto *a = tileAttached(tiles_.at(i).item.get())) {
-            a->setIndex(static_cast<int>(i));
-        }
-    }
 
     invalidateVerticesMap();
     return true;
