@@ -179,13 +179,12 @@ bool FlexTileLayouter::close(size_t index)
         return false;
     }
 
-    // Adjust tile indices and remove it.
-    for (size_t i = index + 1; i < tiles_.size(); ++i) {
+    tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
+    for (size_t i = index; i < tiles_.size(); ++i) {
         if (auto *a = tileAttached(tiles_.at(i).item.get())) {
-            a->setIndex(static_cast<int>(i - 1));
+            a->setIndex(static_cast<int>(i));
         }
     }
-    tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
 
     invalidateVerticesMap();
     return true;
