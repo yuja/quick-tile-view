@@ -67,8 +67,8 @@ public:
     bool close(size_t index);
 
     bool isMoving() const;
-    void startMoving(size_t index, Qt::Orientations orientations, const QRectF &outerPixelRect,
-                     const QSizeF &handlePixelSize);
+    void startMoving(size_t index, Qt::Orientations orientations, bool lineThrough,
+                     const QRectF &outerPixelRect, const QSizeF &handlePixelSize);
     void moveTo(const QPointF &normPos, const QSizeF &snapSize);
     void resetMovingState();
 
@@ -84,6 +84,7 @@ private:
     };
 
     AdjacentIndices collectAdjacentTiles(size_t index, Qt::Orientations orientations) const;
+    AdjacentIndices collectAdjacentTilesThrough(size_t index, Qt::Orientations orientations) const;
     QRectF calculateMovableNormRect(size_t index, const AdjacentIndices &adjacentIndices,
                                     const QRectF &outerPixelRect,
                                     const QSizeF &handlePixelSize) const;

@@ -210,7 +210,9 @@ void FlexTiler::mousePressEvent(QMouseEvent *event)
 
     // Determine tiles to be moved on press because the grid may change while moving
     // the selected handle.
-    layouter_.startMoving(static_cast<size_t>(index), orientations, extendedOuterPixelRect(),
+    const bool lineThrough = event->modifiers() & Qt::ShiftModifier;
+    layouter_.startMoving(static_cast<size_t>(index), orientations, lineThrough,
+                          extendedOuterPixelRect(),
                           { horizontalHandlePixelWidth_, verticalHandlePixelHeight_ });
     movingHandleGrabPixelOffset_ = event->position() - item->position();
     setKeepMouseGrab(true);

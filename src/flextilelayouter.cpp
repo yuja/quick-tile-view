@@ -186,11 +186,12 @@ bool FlexTileLayouter::isMoving() const
             || !movingTiles_.bottom.empty();
 }
 
-void FlexTileLayouter::startMoving(size_t index, Qt::Orientations orientations,
+void FlexTileLayouter::startMoving(size_t index, Qt::Orientations orientations, bool lineThrough,
                                    const QRectF &outerPixelRect, const QSizeF &handlePixelSize)
 {
     ensureVerticesMapBuilt();
-    movingTiles_ = collectAdjacentTiles(index, orientations);
+    movingTiles_ = lineThrough ? collectAdjacentTilesThrough(index, orientations)
+                               : collectAdjacentTiles(index, orientations);
     movableNormRect_ =
             calculateMovableNormRect(index, movingTiles_, outerPixelRect, handlePixelSize);
     preMoveXyVerticesMap_ = xyVerticesMap_;
@@ -246,6 +247,57 @@ auto FlexTileLayouter::collectAdjacentTiles(size_t index, Qt::Orientations orien
             return {};
         std::vector<int> tiles0;
         for (auto p = v0s; p != line0->second.end() && p->first < pos1; ++p) {
+            Q_ASSERT(p->second.tileIndex >= 0);
+            tiles0.push_back(p->second.tileIndex);
+        }
+
+        return { tiles0, tiles1 };
+    };
+
+    AdjacentIndices indices;
+    const auto &rect = tiles_.at(index).normRect;
+    if (orientations & Qt::Horizontal) {
+        std::tie(indices.left, indices.right) = collect(xyVerticesMap_, rect.x0, rect.y0);
+    }
+    if (orientations & Qt::Vertical) {
+        std::tie(indices.top, indices.bottom) = collect(yxVerticesMap_, rect.y0, rect.x0);
+    }
+
+    return indices;
+}
+
+auto FlexTileLayouter::collectAdjacentTilesThrough(size_t index,
+                                                   Qt::Orientations orientations) const
+        -> AdjacentIndices
+{
+    const auto collect = [](const VerticesMap &vertices, qreal key1,
+                            qreal pos) -> std::tuple<std::vector<int>, std::vector<int>> {
+        // Walk through the line to determine contiguous range including the source item.
+        const auto line1 = vertices.find(key1);
+        if (line1 == vertices.begin() || line1 == vertices.end())
+            return {};
+        qreal pos0 = 1.0, pos1 = 0.0;
+        std::vector<int> tiles1;
+        for (auto p = line1->second.begin(); p != line1->second.end(); ++p) {
+            if (!p->second.primary && p->first > pos) { // reached to right/bottom edge
+                pos1 = p->first;
+                break;
+            } else if (!p->second.primary) { // not contiguous to the source item
+                pos0 = 1.0;
+                tiles1.clear();
+                continue;
+            }
+            Q_ASSERT(p->second.tileIndex >= 0);
+            if (tiles1.empty()) {
+                pos0 = p->first;
+            }
+            tiles1.push_back(p->second.tileIndex);
+        }
+
+        // Collect tiles on the adjacent left/top line within the same range.
+        const auto line0 = std::prev(line1);
+        std::vector<int> tiles0;
+        for (auto p = line0->second.find(pos0); p != line0->second.end() && p->first < pos1; ++p) {
             Q_ASSERT(p->second.tileIndex >= 0);
             tiles0.push_back(p->second.tileIndex);
         }
