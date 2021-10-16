@@ -397,6 +397,7 @@ void FlexTileLayouter::invalidateVerticesMap()
 {
     xyVerticesMap_.clear();
     yxVerticesMap_.clear();
+    tilesCollapsible_.clear();
 }
 
 void FlexTileLayouter::ensureVerticesMapBuilt()
@@ -447,26 +448,28 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
         const auto h0 = xyVerticesMap_.lower_bound(x0);
         const auto h1 = xyVerticesMap_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            p->second.insert({ y0, { static_cast<int>(i), y0, p == h0, false } });
+            p->second.insert({ y0, { static_cast<int>(i), y0, p == h0 } });
         }
 
         const auto v0 = yxVerticesMap_.lower_bound(y0);
         const auto v1 = yxVerticesMap_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            p->second.insert({ x0, { static_cast<int>(i), x0, p == v0, false } });
+            p->second.insert({ x0, { static_cast<int>(i), x0, p == v0 } });
         }
     }
 
     // Insert terminators for convenience.
     for (auto &[x, vertices] : xyVerticesMap_) {
-        vertices.insert({ 1.0, { -1, 1.0, false, false } });
+        vertices.insert({ 1.0, { -1, 1.0, false } });
     }
     for (auto &[y, vertices] : yxVerticesMap_) {
-        vertices.insert({ 1.0, { -1, 1.0, false, false } });
+        vertices.insert({ 1.0, { -1, 1.0, false } });
     }
 
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
-    const auto calculateAdjacentRelation = [](VerticesMap &vertices) {
+    Q_ASSERT(tilesCollapsible_.empty());
+    tilesCollapsible_.resize(tiles_.size(), false);
+    const auto calculateAdjacentRelation = [this](VerticesMap &vertices) {
         if (vertices.empty())
             return; // in case we allowed empty tiles.
         // First line should have no handle, so skipped updating handlePixelSize.
@@ -482,11 +485,16 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
             while (v0p != line0->second.end() && v1p != line1->second.end()) {
                 // Handle can be isolated if two vertices of the adjacent lines meet.
                 if (v0p->first == v1p->first) { // should exactly match here
+                    Q_ASSERT(v0s->second.tileIndex >= 0 && v1s->second.tileIndex >= 0);
                     v1s->second.handleEnd = v1p->first;
                     // A single cell can be collapsed if the adjacent lines meet.
                     const bool border = v0s->second.tileIndex != v1s->second.tileIndex;
-                    v0s->second.collapsible = v0s->second.collapsible || (d0 == 1 && border);
-                    v1s->second.collapsible = v1s->second.collapsible || (d1 == 1 && border);
+                    if (d0 == 1 && border) {
+                        tilesCollapsible_.at(static_cast<size_t>(v0s->second.tileIndex)) = true;
+                    }
+                    if (d1 == 1 && border) {
+                        tilesCollapsible_.at(static_cast<size_t>(v1s->second.tileIndex)) = true;
+                    }
                     v0s = v0p;
                     v1s = v1p;
                     ++v0p;
@@ -518,9 +526,6 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
         return outerPixelRect.top() + y * outerPixelRect.height();
     };
 
-    std::vector<bool> tilesCollapsible;
-    tilesCollapsible.resize(tiles_.size(), false);
-
     // TODO: fix up pixel size per minimumWidth/Height
 
     for (const auto &[x, vertices] : xyVerticesMap_) {
@@ -528,15 +533,7 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
         if (v0p == vertices.end())
             continue;
         for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->second.tileIndex < 0)
-                continue;
-
-            // Each tile may span more than one cells, and only the exterior cells can be
-            // marked as collapsible.
-            if (v0p->second.collapsible) {
-                tilesCollapsible.at(static_cast<size_t>(v0p->second.tileIndex)) = true;
-            }
-
+            Q_ASSERT(v0p->second.tileIndex >= 0);
             // No need to update items for all of the spanned cells.
             if (!v0p->second.primary)
                 continue;
@@ -562,15 +559,7 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
         if (v0p == vertices.end())
             continue;
         for (auto v1p = std::next(v0p); v1p != vertices.end(); v0p = v1p, ++v1p) {
-            if (v0p->second.tileIndex < 0)
-                continue;
-
-            // Each tile may span more than one cells, and only the exterior cells can be
-            // marked as collapsible.
-            if (v0p->second.collapsible) {
-                tilesCollapsible.at(static_cast<size_t>(v0p->second.tileIndex)) = true;
-            }
-
+            Q_ASSERT(v0p->second.tileIndex >= 0);
             // No need to update items for all of the spanned cells.
             if (!v0p->second.primary)
                 continue;
@@ -594,7 +583,7 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
     for (size_t i = 0; i < tiles_.size(); ++i) {
         const auto &tile = tiles_.at(i);
         if (auto *a = tileAttached(tile.item.get())) {
-            a->setClosable(tilesCollapsible.at(i));
+            a->setClosable(tilesCollapsible_.at(i));
         }
     }
 }

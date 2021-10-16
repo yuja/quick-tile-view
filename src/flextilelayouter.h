@@ -52,7 +52,6 @@ public:
         int tileIndex; // -1 if terminator
         qreal handleEnd; // <=pos: invisible, >pos: span to end pos
         bool primary; // is starting vertex in orthogonal axis?
-        bool collapsible; // can any of the adjacent tiles be expanded to fill this cell?
     };
 
     using VerticesMap = std::map<qreal, std::map<qreal, Vertex>>; // x: {y: v} or y: {x: v}
@@ -95,6 +94,7 @@ private:
     std::vector<Tile> tiles_;
     VerticesMap xyVerticesMap_; // x: {y: v}, updated by ensureVerticesMapBuilt()
     VerticesMap yxVerticesMap_; // y: {x: v}, updated by ensureVerticesMapBuilt()
+    std::vector<bool> tilesCollapsible_; // by tile index, updated by ensureVerticesMapBuilt()
     AdjacentIndices movingTiles_;
     QRectF movableNormRect_;
     VerticesMap preMoveXyVerticesMap_;
