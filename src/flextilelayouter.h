@@ -50,7 +50,7 @@ public:
     struct Vertex
     {
         int tileIndex; // -1 if terminator
-        qreal normHandleSize; // 0: invisible, >0: span n pixels
+        qreal handleEnd; // <=pos: invisible, >pos: span to end pos
         bool primary; // is starting vertex in orthogonal axis?
         bool collapsible; // can any of the adjacent tiles be expanded to fill this cell?
     };

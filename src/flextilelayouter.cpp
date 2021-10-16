@@ -233,7 +233,7 @@ auto FlexTileLayouter::collectAdjacentTiles(size_t index, Qt::Orientations orien
         const auto v1s = line1->second.find(pos0);
         if (v1s == line1->second.end())
             return {};
-        const qreal pos1 = pos0 + v1s->second.normHandleSize;
+        const qreal pos1 = v1s->second.handleEnd;
         std::vector<int> tiles1;
         for (auto p = v1s; p != line1->second.end() && p->first < pos1; ++p) {
             Q_ASSERT(p->second.tileIndex >= 0);
@@ -447,22 +447,22 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
         const auto h0 = xyVerticesMap_.lower_bound(x0);
         const auto h1 = xyVerticesMap_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            p->second.insert({ y0, { static_cast<int>(i), 0.0, p == h0, false } });
+            p->second.insert({ y0, { static_cast<int>(i), y0, p == h0, false } });
         }
 
         const auto v0 = yxVerticesMap_.lower_bound(y0);
         const auto v1 = yxVerticesMap_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            p->second.insert({ x0, { static_cast<int>(i), 0.0, p == v0, false } });
+            p->second.insert({ x0, { static_cast<int>(i), x0, p == v0, false } });
         }
     }
 
     // Insert terminators for convenience.
     for (auto &[x, vertices] : xyVerticesMap_) {
-        vertices.insert({ 1.0, { -1, 0.0, false, false } });
+        vertices.insert({ 1.0, { -1, 1.0, false, false } });
     }
     for (auto &[y, vertices] : yxVerticesMap_) {
-        vertices.insert({ 1.0, { -1, 0.0, false, false } });
+        vertices.insert({ 1.0, { -1, 1.0, false, false } });
     }
 
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
@@ -482,7 +482,7 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
             while (v0p != line0->second.end() && v1p != line1->second.end()) {
                 // Handle can be isolated if two vertices of the adjacent lines meet.
                 if (v0p->first == v1p->first) { // should exactly match here
-                    v1s->second.normHandleSize = v1p->first - v1s->first;
+                    v1s->second.handleEnd = v1p->first;
                     // A single cell can be collapsed if the adjacent lines meet.
                     const bool border = v0s->second.tileIndex != v1s->second.tileIndex;
                     v0s->second.collapsible = v0s->second.collapsible || (d0 == 1 && border);
@@ -548,11 +548,11 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
             }
             if (auto &item = tile.horizontalHandleItem) {
                 const qreal m = handlePixelSize.height();
-                item->setVisible(v0p->second.normHandleSize > 0.0);
+                item->setVisible(v0p->second.handleEnd > v0p->first);
                 item->setX(mapToPixelX(x));
                 item->setY(mapToPixelY(v0p->first) + m);
                 item->setWidth(handlePixelSize.width());
-                item->setHeight(v0p->second.normHandleSize * outerPixelRect.height() - m);
+                item->setHeight((v0p->second.handleEnd - v0p->first) * outerPixelRect.height() - m);
             }
         }
     }
@@ -582,10 +582,10 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
             }
             if (auto &item = tile.verticalHandleItem) {
                 const qreal m = handlePixelSize.width();
-                item->setVisible(v0p->second.normHandleSize > 0.0);
+                item->setVisible(v0p->second.handleEnd > v0p->first);
                 item->setX(mapToPixelX(v0p->first) + m);
                 item->setY(mapToPixelY(y));
-                item->setWidth(v0p->second.normHandleSize * outerPixelRect.width() - m);
+                item->setWidth((v0p->second.handleEnd - v0p->first) * outerPixelRect.width() - m);
                 item->setHeight(handlePixelSize.height());
             }
         }
