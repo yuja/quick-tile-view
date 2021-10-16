@@ -416,7 +416,7 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
 
     // Map tiles to vertices per axis
     //
-    //       x0  xm  x1          horizontalVertices  verticalVertices
+    //       x0  xm  x1          xyVertices          yxVertices
     //        '   '   '          x0  xm  x1
     //            |               '   '   '
     // y0- ---o---+---o---        A   +   B          y0- A-------B---
@@ -426,12 +426,12 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
     // y1-    o-------+           C   +   |          y1- C-------+~~~
     //        |   C   |           |   :   |
     //
-    // horizontalVertices {      // describes vertical lines made by horizontal splits
+    // xyVertices {              // describes vertical lines made by horizontal splits
     //     x0: {y0, A}, {y1, C}  // A (x0, y0..y1), C (x0, y1..end)
     //     xm: {y0, -}, {y1, -}
     //     x1: {y0, B}           // B (x1, y0..end)
     // }
-    // verticalVertices {        // describes horizontal lines made by vertical splits
+    // yxVertices {              // describes horizontal lines made by vertical splits
     //     y0: {x0, A}, {x1, B}  // A (x0..x1, y0), B (x1..end, y0)
     //     ym: {x0, -}, {x1, -}
     //     y1: {x0, C}, {x1, -}  // C (x0..x1, y1)
