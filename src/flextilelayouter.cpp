@@ -242,11 +242,8 @@ auto FlexTileLayouter::collectAdjacentTiles(size_t index, Qt::Orientations orien
 
         // Collect tiles on the adjacent left/top line within the same range.
         const auto line0 = std::prev(line1);
-        const auto v0s = line0->second.find(pos0);
-        if (v0s == line0->second.end())
-            return {};
         std::vector<int> tiles0;
-        for (auto p = v0s; p != line0->second.end() && p->first < pos1; ++p) {
+        for (auto p = line0->second.find(pos0); p != line0->second.end() && p->first < pos1; ++p) {
             Q_ASSERT(p->second.tileIndex >= 0);
             tiles0.push_back(p->second.tileIndex);
         }
