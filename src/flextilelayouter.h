@@ -50,8 +50,8 @@ public:
     struct Vertex
     {
         int tileIndex; // -1 if terminator
-        qreal handleEnd; // <=pos: invisible, >pos: span to end pos
         bool primary; // is starting vertex in orthogonal axis?
+        qreal handleEnd; // <=pos: invisible, >pos: span to end pos
     };
 
     using VerticesMap = std::map<qreal, std::map<qreal, Vertex>>; // x: {y: v} or y: {x: v}

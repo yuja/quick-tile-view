@@ -448,22 +448,22 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
         const auto h0 = xyVerticesMap_.lower_bound(x0);
         const auto h1 = xyVerticesMap_.lower_bound(x1);
         for (auto p = h0; p != h1; ++p) {
-            p->second.insert({ y0, { static_cast<int>(i), y0, p == h0 } });
+            p->second.insert({ y0, { static_cast<int>(i), p == h0, y0 } });
         }
 
         const auto v0 = yxVerticesMap_.lower_bound(y0);
         const auto v1 = yxVerticesMap_.lower_bound(y1);
         for (auto p = v0; p != v1; ++p) {
-            p->second.insert({ x0, { static_cast<int>(i), x0, p == v0 } });
+            p->second.insert({ x0, { static_cast<int>(i), p == v0, x0 } });
         }
     }
 
     // Insert terminators for convenience.
     for (auto &[x, vertices] : xyVerticesMap_) {
-        vertices.insert({ 1.0, { -1, 1.0, false } });
+        vertices.insert({ 1.0, { -1, false, 1.0 } });
     }
     for (auto &[y, vertices] : yxVerticesMap_) {
-        vertices.insert({ 1.0, { -1, 1.0, false } });
+        vertices.insert({ 1.0, { -1, false, 1.0 } });
     }
 
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
