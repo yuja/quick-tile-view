@@ -1,7 +1,10 @@
 #include <QMouseEvent>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iterator>
+#include <limits>
+#include <numeric>
 #include "flextilelayouter.h"
 #include "flextiler.h"
 
@@ -138,40 +141,65 @@ bool FlexTileLayouter::close(size_t index)
         return collectLine(linep, pos0, pos1);
     };
 
+    const auto avgIndexDistance = [index](const std::vector<int> &toIndices) {
+        if (toIndices.empty())
+            return std::numeric_limits<qreal>::max();
+        const int d = std::accumulate(toIndices.begin(), toIndices.end(), 0, [index](int n, int i) {
+            return n + std::abs(i - static_cast<int>(index));
+        });
+        return static_cast<qreal>(d) / static_cast<qreal>(toIndices.size());
+    };
+
     const auto origRect = tiles_.at(static_cast<size_t>(index)).normRect;
-    if (const auto indices = collectPrev(xyVerticesMap_, origRect.x0, origRect.y0, origRect.y1);
-        !indices.empty()) {
+    const std::array<std::vector<int>, 4> collectedIndices {
+        collectPrev(xyVerticesMap_, origRect.x0, origRect.y0, origRect.y1), // left
+        collectNext(xyVerticesMap_, origRect.x1, origRect.y0, origRect.y1), // right
+        collectPrev(yxVerticesMap_, origRect.y0, origRect.x0, origRect.x1), // top
+        collectNext(yxVerticesMap_, origRect.y1, origRect.x0, origRect.x1), // bottom
+    };
+    // If there are multiple candidates, pick the closest in the tiles vector so
+    // the tiles previously split will likely be merged.
+    auto bestIndices = collectedIndices.end();
+    qreal bestIndexDistance = std::numeric_limits<qreal>::max();
+    for (auto p = collectedIndices.begin(); p != collectedIndices.end(); ++p) {
+        const qreal d = avgIndexDistance(*p);
+        if (d >= bestIndexDistance)
+            continue;
+        bestIndices = p;
+        bestIndexDistance = d;
+    }
+    if (bestIndices == collectedIndices.end())
+        return false;
+    Q_ASSERT(!bestIndices->empty());
+    switch (bestIndices - collectedIndices.begin()) {
+    case 0:
         // Found left matches, which will be expanded to right.
-        for (const int i : indices) {
+        for (const int i : *bestIndices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
             tile.normRect.x1 = origRect.x1;
         }
-    } else if (const auto indices =
-                       collectNext(xyVerticesMap_, origRect.x1, origRect.y0, origRect.y1);
-               !indices.empty()) {
+        break;
+    case 1:
         // Found right matches, which will be expanded to left.
-        for (const int i : indices) {
+        for (const int i : *bestIndices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
             tile.normRect.x0 = origRect.x0;
         }
-    } else if (const auto indices =
-                       collectPrev(yxVerticesMap_, origRect.y0, origRect.x0, origRect.x1);
-               !indices.empty()) {
+        break;
+    case 2:
         // Found top matches, which will be expanded to bottom.
-        for (const int i : indices) {
+        for (const int i : *bestIndices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
             tile.normRect.y1 = origRect.y1;
         }
-    } else if (const auto indices =
-                       collectNext(yxVerticesMap_, origRect.y1, origRect.x0, origRect.x1);
-               !indices.empty()) {
+        break;
+    case 3:
         // Found bottom matches, which will be expanded to top.
-        for (const int i : indices) {
+        for (const int i : *bestIndices) {
             auto &tile = tiles_.at(static_cast<size_t>(i));
             tile.normRect.y0 = origRect.y0;
         }
-    } else {
-        return false;
+        break;
     }
 
     tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
