@@ -547,11 +547,14 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
 {
     ensureVerticesMapBuilt();
 
+    // Avoid sub-pixel alignment of tiles. Be aware that outerPixelRect may start
+    // from a negative point and std::round() would round it away from zero, which
+    // is not what we want.
     const auto mapToPixelX = [&outerPixelRect](qreal x) {
-        return outerPixelRect.left() + x * outerPixelRect.width();
+        return outerPixelRect.left() + std::round(x * outerPixelRect.width());
     };
     const auto mapToPixelY = [&outerPixelRect](qreal y) {
-        return outerPixelRect.top() + y * outerPixelRect.height();
+        return outerPixelRect.top() + std::round(y * outerPixelRect.height());
     };
 
     // TODO: fix up pixel size per minimumWidth/Height
@@ -569,7 +572,7 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
             if (auto &item = tile.item) {
                 const qreal m = handlePixelSize.height();
                 item->setY(mapToPixelY(v0p->first) + m);
-                item->setHeight((v1p->first - v0p->first) * outerPixelRect.height() - m);
+                item->setHeight(mapToPixelY(v1p->first) - mapToPixelY(v0p->first) - m);
             }
             if (auto &item = tile.horizontalHandleItem) {
                 const qreal m = handlePixelSize.height();
@@ -577,7 +580,7 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
                 item->setX(mapToPixelX(x));
                 item->setY(mapToPixelY(v0p->first) + m);
                 item->setWidth(handlePixelSize.width());
-                item->setHeight((v0p->second.handleEnd - v0p->first) * outerPixelRect.height() - m);
+                item->setHeight(mapToPixelY(v0p->second.handleEnd) - mapToPixelY(v0p->first) - m);
             }
         }
     }
@@ -595,14 +598,14 @@ void FlexTileLayouter::resizeTiles(const QRectF &outerPixelRect, const QSizeF &h
             if (auto &item = tile.item) {
                 const qreal m = handlePixelSize.width();
                 item->setX(mapToPixelX(v0p->first) + m);
-                item->setWidth((v1p->first - v0p->first) * outerPixelRect.width() - m);
+                item->setWidth(mapToPixelX(v1p->first) - mapToPixelX(v0p->first) - m);
             }
             if (auto &item = tile.verticalHandleItem) {
                 const qreal m = handlePixelSize.width();
                 item->setVisible(v0p->second.handleEnd > v0p->first);
                 item->setX(mapToPixelX(v0p->first) + m);
                 item->setY(mapToPixelY(y));
-                item->setWidth((v0p->second.handleEnd - v0p->first) * outerPixelRect.width() - m);
+                item->setWidth(mapToPixelX(v0p->second.handleEnd) - mapToPixelX(v0p->first) - m);
                 item->setHeight(handlePixelSize.height());
             }
         }
