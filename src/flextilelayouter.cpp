@@ -108,7 +108,13 @@ void FlexTileLayouter::split(size_t index, Qt::Orientation orientation,
     invalidateVerticesMap();
 }
 
-bool FlexTileLayouter::close(size_t index)
+/*!
+ * Closes the specified tile and collapses the adjacent tiles to fill the area.
+ *
+ * Returns index of one of the tiles filled the closed area, or -1 if the tile
+ * couldn't be collapsed to any of the adjacent tiles.
+ */
+int FlexTileLayouter::close(size_t index)
 {
     resetMovingState();
     ensureVerticesMapBuilt();
@@ -169,7 +175,7 @@ bool FlexTileLayouter::close(size_t index)
         bestIndexDistance = d;
     }
     if (bestIndices == collectedIndices.end())
-        return false;
+        return -1;
     Q_ASSERT(!bestIndices->empty());
     switch (bestIndices - collectedIndices.begin()) {
     case 0:
@@ -205,7 +211,7 @@ bool FlexTileLayouter::close(size_t index)
     tiles_.erase(tiles_.begin() + static_cast<ptrdiff_t>(index));
 
     invalidateVerticesMap();
-    return true;
+    return bestIndices->front() - static_cast<int>(bestIndices->front() >= static_cast<int>(index));
 }
 
 bool FlexTileLayouter::isMoving() const

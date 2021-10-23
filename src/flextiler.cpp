@@ -62,6 +62,7 @@ void FlexTiler::recreateTiles()
         auto &tile = layouter_.tileAt(i);
         tile = createTile(tile.normRect, static_cast<int>(i));
     }
+    resetCurrentIndex(currentIndex_);
     polish();
 }
 
@@ -152,6 +153,29 @@ int FlexTiler::count() const
     return static_cast<int>(layouter_.count());
 }
 
+void FlexTiler::setCurrentIndex(int index)
+{
+    if (currentIndex_ == index)
+        return;
+    currentIndex_ = index;
+    emit currentIndexChanged();
+    emit currentItemChanged();
+}
+
+void FlexTiler::resetCurrentIndex(int index)
+{
+    if (currentIndex_ != index) {
+        currentIndex_ = index;
+        emit currentIndexChanged();
+    }
+    emit currentItemChanged();
+}
+
+QQuickItem *FlexTiler::currentItem() const
+{
+    return currentIndex_ >= 0 ? itemAt(currentIndex_) : nullptr;
+}
+
 QQuickItem *FlexTiler::itemAt(int index) const
 {
     if (index < 0 || index >= static_cast<int>(layouter_.count())) {
@@ -171,6 +195,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     if (count < 2)
         return;
 
+    const int shiftedCurrentIndex = currentIndex_ + (index < currentIndex_ ? count - 1 : 0);
     std::vector<Tile> newTiles;
     for (int i = 1; i < count; ++i) {
         newTiles.push_back(createTile({ 0.0, 0.0, 0.0, 0.0 }, index + i));
@@ -180,6 +205,7 @@ void FlexTiler::split(int index, Qt::Orientation orientation, int count)
     layouter_.split(static_cast<size_t>(index), orientation, std::move(newTiles), snapSize);
 
     updateTileIndices(index + count);
+    setCurrentIndex(shiftedCurrentIndex);
     polish();
     emit countChanged();
 }
@@ -191,12 +217,20 @@ void FlexTiler::close(int index)
         return;
     }
 
-    if (!layouter_.close(static_cast<size_t>(index))) {
+    const bool currentClosing = index == currentIndex_;
+    const int shiftedCurrentIndex = currentIndex_ - static_cast<int>(index < currentIndex_);
+    const int collapsedToIndex = layouter_.close(static_cast<size_t>(index));
+    if (collapsedToIndex < 0) {
         qmlInfo(this) << "no collapsible tiles found for " << index;
         return;
     }
 
     updateTileIndices(index);
+    if (currentClosing) {
+        resetCurrentIndex(collapsedToIndex);
+    } else {
+        setCurrentIndex(shiftedCurrentIndex);
+    }
     polish();
     emit countChanged();
 }

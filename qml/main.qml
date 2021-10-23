@@ -7,7 +7,7 @@ import MyTile
 Window {
     id: root
 
-    property alias currentTileIndex: tileIndexSpinBox.value
+    property alias targetTileIndex: tileIndexSpinBox.value
     property alias tiler: tilerLoader.item
 
     width: 640
@@ -22,14 +22,15 @@ Window {
             delegate: Tile {
                 FlexTiler.minimumWidth: minimumWidth
                 FlexTiler.minimumHeight: minimumHeight
-                highlighted: FlexTiler.index === root.currentTileIndex
+                highlighted: this === flexTiler.currentItem
                 index: FlexTiler.index
                 closable: FlexTiler.closable
                 onCloseRequested: {
                     flexTiler.close(index);
                 }
                 onTapped: {
-                    root.currentTileIndex = FlexTiler.index;
+                    flexTiler.currentIndex = FlexTiler.index;
+                    root.targetTileIndex = FlexTiler.index;
                 }
             }
             horizontalHandle: HorizontalHandle {
@@ -45,17 +46,20 @@ Window {
         id: treeTilerComponent
         Tiler {
             id: tiler
+            property int currentIndex: 0
+            readonly property Item currentItem: currentIndex >= 0 ? itemAt(currentIndex) : null
             delegate: Tile {
                 Tiler.minimumWidth: minimumWidth
                 Tiler.minimumHeight: minimumHeight
-                highlighted: Tiler.index === root.currentTileIndex
+                highlighted: Tiler.index === tiler.currentIndex
                 index: Tiler.index
                 closable: tiler.count > 1
                 onCloseRequested: {
                     tiler.close(index);
                 }
                 onTapped: {
-                    root.currentTileIndex = Tiler.index;
+                    tiler.currentIndex = Tiler.index;
+                    root.targetTileIndex = Tiler.index;
                 }
             }
             horizontalHandle: HorizontalHandle {
@@ -96,7 +100,12 @@ Window {
                         model: ["flex", "tree"]
                     }
 
-                    Label { text: "tile" }
+                    Label { text: "current" }
+                    Label {
+                        text: root.tiler.currentIndex
+                    }
+
+                    Label { text: "target" }
                     SpinBox {
                         id: tileIndexSpinBox
                         Layout.preferredWidth: 80
@@ -111,9 +120,9 @@ Window {
                         editable: true
                         from: 0
                         to: 1000
-                        value: root.tiler.itemAt(root.currentTileIndex).minimumWidth
+                        value: root.tiler.itemAt(root.targetTileIndex).minimumWidth
                         onValueModified: {
-                            root.tiler.itemAt(root.currentTileIndex).minimumWidth = value;
+                            root.tiler.itemAt(root.targetTileIndex).minimumWidth = value;
                         }
                     }
 
@@ -123,9 +132,9 @@ Window {
                         editable: true
                         from: 0
                         to: 1000
-                        value: root.tiler.itemAt(root.currentTileIndex).minimumHeight
+                        value: root.tiler.itemAt(root.targetTileIndex).minimumHeight
                         onValueModified: {
-                            root.tiler.itemAt(root.currentTileIndex).minimumHeight = value;
+                            root.tiler.itemAt(root.targetTileIndex).minimumHeight = value;
                         }
                     }
                 }

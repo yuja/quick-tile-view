@@ -20,6 +20,8 @@ class FlexTiler : public QQuickItem
     Q_PROPERTY(QQmlComponent *verticalHandle READ verticalHandle WRITE setVerticalHandle NOTIFY
                        verticalHandleChanged FINAL)
     Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
+    Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentIndexChanged)
+    Q_PROPERTY(QQuickItem *currentItem READ currentItem NOTIFY currentItemChanged)
     QML_ATTACHED(FlexTilerAttached)
     QML_ELEMENT
 
@@ -39,6 +41,9 @@ public:
     void setVerticalHandle(QQmlComponent *handle);
 
     int count() const;
+    int currentIndex() const { return currentIndex_; }
+    void setCurrentIndex(int index);
+    QQuickItem *currentItem() const;
     Q_INVOKABLE QQuickItem *itemAt(int index) const;
 
     Q_INVOKABLE void split(int index, Qt::Orientation orientation, int count = 2);
@@ -49,6 +54,8 @@ signals:
     void horizontalHandleChanged();
     void verticalHandleChanged();
     void countChanged();
+    void currentIndexChanged();
+    void currentItemChanged();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -68,6 +75,7 @@ private:
     std::tuple<UniqueItemPtr, std::unique_ptr<QQmlContext>>
     createHandleItem(QQmlComponent *component);
     void updateTileIndices(int from);
+    void resetCurrentIndex(int index);
 
     QRectF extendedOuterPixelRect() const;
 
@@ -78,6 +86,7 @@ private:
     qreal horizontalHandlePixelWidth_ = 0.0;
     qreal verticalHandlePixelHeight_ = 0.0;
     QPointF movingHandleGrabPixelOffset_;
+    int currentIndex_ = 0; // should have at least one tile
 };
 
 class FlexTilerAttached : public QObject

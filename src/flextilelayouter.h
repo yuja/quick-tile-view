@@ -63,7 +63,7 @@ public:
 
     void split(size_t index, Qt::Orientation orientation, std::vector<Tile> &&newTiles,
                const QSizeF &snapSize);
-    bool close(size_t index);
+    int close(size_t index);
 
     bool isMoving() const;
     void startMoving(size_t index, Qt::Orientations orientations, bool lineThrough,
