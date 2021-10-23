@@ -13,18 +13,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml)
 
-find_package(Qt6 COMPONENTS Core Quick REQUIRED)
-
+add_subdirectory(examples/tiling)
 add_subdirectory(src)
-
-qt_add_executable(quick-tile-view
-  src/main.cpp
-  qml.qrc
-)
-
-target_compile_definitions(quick-tile-view PRIVATE
-  $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
-target_link_libraries(quick-tile-view PRIVATE
-  Qt6::Core
-  Qt6::Quick
-)

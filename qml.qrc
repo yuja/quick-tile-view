@@ -1,8 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>qml/HorizontalHandle.qml</file>
-        <file>qml/Tile.qml</file>
-        <file>qml/VerticalHandle.qml</file>
-        <file>qml/main.qml</file>
-    </qresource>
-</RCC>

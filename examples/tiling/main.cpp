@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
     QQmlApplicationEngine engine;
-    engine.addImportPath(app.applicationDirPath() + "/qml");
-    const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
+    engine.addImportPath(app.applicationDirPath() + "/../../qml");
+    const QUrl url(QStringLiteral("qrc:/MyTilingExample/main.qml"));
     QObject::connect(
             &engine, &QQmlApplicationEngine::objectCreated, &app,
             [url](QObject *obj, const QUrl &objUrl) {
