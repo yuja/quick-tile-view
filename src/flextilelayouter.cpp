@@ -9,6 +9,11 @@
 #include "flextiler.h"
 
 namespace {
+// Minimum viable width/height of tile in normalized coordinates. Zero-sized
+// tile is invalid since it would make the vertices map structure corrupted.
+// The exact value isn't important and is just copied from qFuzzyIsNull().
+constexpr qreal epsilonTileSize = sizeof(qreal) >= 8 ? 0.000000000001 : 0.00001;
+
 FlexTilerAttached *tileAttached(const QQuickItem *item)
 {
     if (!item)
@@ -355,11 +360,11 @@ QRectF FlexTileLayouter::calculateMovableNormRect(size_t index,
 {
     const auto minimumTileWidth = [&outerPixelRect](const Tile &tile) -> qreal {
         const auto *a = tileAttached(tile.item.get());
-        return a ? a->minimumWidth() / outerPixelRect.width() : 0.0;
+        return std::max(a ? a->minimumWidth() / outerPixelRect.width() : 0.0, epsilonTileSize);
     };
     const auto minimumTileHeight = [&outerPixelRect](const Tile &tile) -> qreal {
         const auto *a = tileAttached(tile.item.get());
-        return a ? a->minimumHeight() / outerPixelRect.height() : 0.0;
+        return std::max(a ? a->minimumHeight() / outerPixelRect.height() : 0.0, epsilonTileSize);
     };
 
     qreal left = 0.0;

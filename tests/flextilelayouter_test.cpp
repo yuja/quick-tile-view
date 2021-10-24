@@ -280,13 +280,13 @@ TEST(FlexTileLayouterTest, MoveH2Clamped)
 
     moveBorder(layouter, 1, Qt::Horizontal, { 0.0, 0.0 }, { 0.1, 0.1 });
     EXPECT_EQ(layouter.tileAt(0).normRect.x1, layouter.tileAt(1).normRect.x0);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(0).normRect.x1, 0.1);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(1).normRect.x0, 0.1);
+    EXPECT_NEAR(layouter.tileAt(0).normRect.x1, 0.1, 0.00001);
+    EXPECT_NEAR(layouter.tileAt(1).normRect.x0, 0.1, 0.00001);
 
     moveBorder(layouter, 1, Qt::Horizontal, { 1.0, 1.0 }, { 0.1, 0.1 });
     EXPECT_EQ(layouter.tileAt(0).normRect.x1, layouter.tileAt(1).normRect.x0);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(0).normRect.x1, 0.9);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(1).normRect.x0, 0.9);
+    EXPECT_NEAR(layouter.tileAt(0).normRect.x1, 0.9, 0.00001);
+    EXPECT_NEAR(layouter.tileAt(1).normRect.x0, 0.9, 0.00001);
 }
 
 TEST(FlexTileLayouterTest, MoveV2Clamped)
@@ -297,13 +297,47 @@ TEST(FlexTileLayouterTest, MoveV2Clamped)
 
     moveBorder(layouter, 1, Qt::Vertical, { 0.0, 0.0 }, { 0.1, 0.1 });
     EXPECT_EQ(layouter.tileAt(0).normRect.y1, layouter.tileAt(1).normRect.y0);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(0).normRect.y1, 0.1);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(1).normRect.y0, 0.1);
+    EXPECT_NEAR(layouter.tileAt(0).normRect.y1, 0.1, 0.00001);
+    EXPECT_NEAR(layouter.tileAt(1).normRect.y0, 0.1, 0.00001);
 
     moveBorder(layouter, 1, Qt::Vertical, { 1.0, 1.0 }, { 0.1, 0.1 });
     EXPECT_EQ(layouter.tileAt(0).normRect.y1, layouter.tileAt(1).normRect.y0);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(0).normRect.y1, 0.9);
-    EXPECT_DOUBLE_EQ(layouter.tileAt(1).normRect.y0, 0.9);
+    EXPECT_NEAR(layouter.tileAt(0).normRect.y1, 0.9, 0.00001);
+    EXPECT_NEAR(layouter.tileAt(1).normRect.y0, 0.9, 0.00001);
+}
+
+TEST(FlexTileLayouterTest, MoveH2Epsilon)
+{
+    FlexTileLayouter layouter;
+    layouter.split(0, Qt::Horizontal, createTiles(1), {});
+    ASSERT_EQ(layouter.count(), 2);
+
+    moveBorder(layouter, 1, Qt::Horizontal, { 0.0, 0.0 }, { 0.0, 0.0 });
+    EXPECT_EQ(layouter.tileAt(0).normRect.x1, layouter.tileAt(1).normRect.x0);
+    EXPECT_LT(layouter.tileAt(0).normRect.x0, layouter.tileAt(0).normRect.x1);
+    EXPECT_LT(layouter.tileAt(1).normRect.x0, layouter.tileAt(1).normRect.x1);
+
+    moveBorder(layouter, 1, Qt::Horizontal, { 1.0, 1.0 }, { 0.0, 0.0 });
+    EXPECT_EQ(layouter.tileAt(0).normRect.x1, layouter.tileAt(1).normRect.x0);
+    EXPECT_LT(layouter.tileAt(0).normRect.x0, layouter.tileAt(0).normRect.x1);
+    EXPECT_LT(layouter.tileAt(1).normRect.x0, layouter.tileAt(1).normRect.x1);
+}
+
+TEST(FlexTileLayouterTest, MoveV2Epsilon)
+{
+    FlexTileLayouter layouter;
+    layouter.split(0, Qt::Vertical, createTiles(1), {});
+    ASSERT_EQ(layouter.count(), 2);
+
+    moveBorder(layouter, 1, Qt::Vertical, { 0.0, 0.0 }, { 0.0, 0.0 });
+    EXPECT_EQ(layouter.tileAt(0).normRect.y1, layouter.tileAt(1).normRect.y0);
+    EXPECT_LT(layouter.tileAt(0).normRect.y0, layouter.tileAt(0).normRect.y1);
+    EXPECT_LT(layouter.tileAt(1).normRect.y0, layouter.tileAt(1).normRect.y1);
+
+    moveBorder(layouter, 1, Qt::Vertical, { 1.0, 1.0 }, { 0.0, 0.0 });
+    EXPECT_EQ(layouter.tileAt(0).normRect.y1, layouter.tileAt(1).normRect.y0);
+    EXPECT_LT(layouter.tileAt(0).normRect.y0, layouter.tileAt(0).normRect.y1);
+    EXPECT_LT(layouter.tileAt(1).normRect.y0, layouter.tileAt(1).normRect.y1);
 }
 
 TEST(FlexTileLayouterTest, MoveHV2x2)
