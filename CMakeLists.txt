@@ -18,3 +18,7 @@ set(QML_IMPORT_PATH ${CMAKE_CURRENT_BINARY_DIR}/qml CACHE STRING "" FORCE)
 
 add_subdirectory(examples/tiling)
 add_subdirectory(src)
+if(BUILD_TESTING)
+  enable_testing()
+  add_subdirectory(tests)
+endif()

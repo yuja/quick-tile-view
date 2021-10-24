@@ -12,6 +12,7 @@ qt_add_qml_module(quick-tiler
     tiler.h
 )
 
+target_include_directories(quick-tiler INTERFACE .)
 target_link_libraries(quick-tiler PUBLIC
   Qt6::Core
   Qt6::Quick
