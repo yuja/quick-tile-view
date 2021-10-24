@@ -1,3 +1,5 @@
+#include <QCursor>
+#include <QHoverEvent>
 #include <QMouseEvent>
 #include <QtQml>
 #include <algorithm>
@@ -17,7 +19,9 @@ constexpr qreal snapPixelSize = 5.0;
 
 FlexTiler::FlexTiler(QQuickItem *parent) : QQuickItem(parent)
 {
+    setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::LeftButton);
+    setCursor(Qt::ArrowCursor);
     setFlag(ItemIsFocusScope);
 }
 
@@ -233,6 +237,40 @@ void FlexTiler::close(int index)
     }
     polish();
     emit countChanged();
+}
+
+void FlexTiler::hoverEnterEvent(QHoverEvent *event)
+{
+    updateHovered(event->position());
+}
+
+void FlexTiler::hoverMoveEvent(QHoverEvent *event)
+{
+    updateHovered(event->position());
+}
+
+void FlexTiler::hoverLeaveEvent(QHoverEvent *)
+{
+    setCursor(Qt::ArrowCursor);
+}
+
+void FlexTiler::updateHovered(const QPointF &position)
+{
+    const auto *item = childAt(position.x(), position.y());
+    const auto [index, orientations] = layouter_.findTileByHandleItem(item);
+    switch (orientations) {
+    case Qt::Horizontal:
+        setCursor(Qt::SplitHCursor);
+        break;
+    case Qt::Vertical:
+        setCursor(Qt::SplitVCursor);
+        break;
+    case Qt::Horizontal | Qt::Vertical:
+        setCursor(Qt::SizeAllCursor);
+        break;
+    default:
+        setCursor(Qt::ArrowCursor);
+    }
 }
 
 void FlexTiler::mousePressEvent(QMouseEvent *event)

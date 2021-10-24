@@ -1,3 +1,5 @@
+#include <QCursor>
+#include <QHoverEvent>
 #include <QMouseEvent>
 #include <QPointF>
 #include <QtQml>
@@ -25,7 +27,9 @@ Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
     bands.push_back({ 0, 0.0, nullptr, nullptr });
     splitMap_.push_back({ Qt::Horizontal, std::move(bands), {}, {} });
 
+    setAcceptHoverEvents(true);
     setAcceptedMouseButtons(Qt::LeftButton);
+    setCursor(Qt::ArrowCursor);
     setFlag(ItemIsFocusScope);
 }
 
@@ -335,6 +339,34 @@ void Tiler::cleanTrailingEmptySplits()
     const auto p = std::find_if(splitMap_.rbegin(), splitMap_.rend(),
                                 [](const auto &s) { return !s.bands.empty(); });
     splitMap_.erase(p.base(), splitMap_.end());
+}
+
+void Tiler::hoverEnterEvent(QHoverEvent *event)
+{
+    updateHovered(event->position());
+}
+
+void Tiler::hoverMoveEvent(QHoverEvent *event)
+{
+    updateHovered(event->position());
+}
+
+void Tiler::hoverLeaveEvent(QHoverEvent *)
+{
+    setCursor(Qt::ArrowCursor);
+}
+
+void Tiler::updateHovered(const QPointF &position)
+{
+    const auto *item = childAt(position.x(), position.y());
+    const auto [splitIndex, bandIndex] = findSplitBandByHandleItem(item);
+    if (splitIndex < 0) {
+        setCursor(Qt::ArrowCursor);
+    } else if (splitMap_.at(static_cast<size_t>(splitIndex)).orientation == Qt::Horizontal) {
+        setCursor(Qt::SplitHCursor);
+    } else {
+        setCursor(Qt::SplitVCursor);
+    }
 }
 
 void Tiler::mousePressEvent(QMouseEvent *event)

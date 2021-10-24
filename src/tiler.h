@@ -1,4 +1,5 @@
 #pragma once
+#include <QPointF>
 #include <QPointer>
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -51,6 +52,9 @@ signals:
     void countChanged();
 
 protected:
+    void hoverEnterEvent(QHoverEvent *event) override;
+    void hoverMoveEvent(QHoverEvent *event) override;
+    void hoverLeaveEvent(QHoverEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
@@ -95,6 +99,7 @@ private:
     QSizeF minimumSizeByIndex(int index) const;
     bool unlinkTileByIndex(Split &split, int index, int depth);
     void cleanTrailingEmptySplits();
+    void updateHovered(const QPointF &position);
     void moveSplitBand(int splitIndex, int bandIndex, const QPointF &itemPos);
     void accumulateTiles(int splitIndex, int depth);
     void resizeTiles(int splitIndex, const QRectF &outerRect, int depth);

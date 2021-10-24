@@ -58,6 +58,9 @@ signals:
     void currentItemChanged();
 
 protected:
+    void hoverEnterEvent(QHoverEvent *event) override;
+    void hoverMoveEvent(QHoverEvent *event) override;
+    void hoverLeaveEvent(QHoverEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
@@ -76,6 +79,7 @@ private:
     createHandleItem(QQmlComponent *component);
     void updateTileIndices(int from);
     void resetCurrentIndex(int index);
+    void updateHovered(const QPointF &position);
 
     QRectF extendedOuterPixelRect() const;
 
