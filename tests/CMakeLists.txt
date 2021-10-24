@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(googletest)
 find_package(Qt6 COMPONENTS Core Quick REQUIRED)
 
 add_executable(quick-tile-view-tests
+  flextilelayouter_test.cpp
   main.cpp
 )
 
