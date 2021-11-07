@@ -443,7 +443,6 @@ void FlexTileLayouter::invalidateVerticesMap()
 
 void FlexTileLayouter::ensureVerticesMapBuilt()
 {
-    Q_ASSERT(!tiles_.empty());
     if (!xyVerticesMap_.empty())
         return;
 
@@ -452,6 +451,7 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
     for (const auto &tile : tiles_) {
         const qreal x0 = tile.normRect.x0;
         const qreal y0 = tile.normRect.y0;
+        Q_ASSERT(0.0 <= x0 && x0 < 1.0 && 0.0 <= y0 && y0 < 1.0);
         xyVerticesMap_.insert({ x0, {} });
         yxVerticesMap_.insert({ y0, {} });
     }
@@ -506,20 +506,23 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
     for (auto &[y, vertices] : yxVerticesMap_) {
         vertices.insert({ 1.0, { -1, false, 1.0 } });
     }
+    // Suppose we have infinite borders at right/bottom, there should be no vertices
+    // on the terminal lines.
+    xyVerticesMap_.insert({ 1.0, {} });
+    yxVerticesMap_.insert({ 1.0, {} });
 
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
     Q_ASSERT(tilesCollapsible_.empty());
     tilesCollapsible_.resize(tiles_.size(), false);
     const auto calculateAdjacentRelation = [this](VerticesMap &verticesMap) {
-        if (verticesMap.empty())
-            return; // in case we allowed empty tiles.
+        Q_ASSERT(!verticesMap.empty());
         // First line should have no handle, so skipped updating handlePixelSize.
         auto line0 = verticesMap.begin();
         for (auto line1 = std::next(line0); line1 != verticesMap.end(); line0 = line1, ++line1) {
             auto v0s = line0->second.begin();
             auto v1s = line1->second.begin();
-            Q_ASSERT(v0s != line0->second.end());
-            Q_ASSERT(v1s != line1->second.end());
+            if (v0s == line0->second.end() || v1s == line1->second.end())
+                continue; // split by infinite line
             auto v0p = std::next(v0s);
             auto v1p = std::next(v1s);
             int d0 = 1, d1 = 1;
