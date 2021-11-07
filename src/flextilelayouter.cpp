@@ -264,12 +264,12 @@ void FlexTileLayouter::resetMovingState()
 auto FlexTileLayouter::collectAdjacentTiles(size_t index, Qt::Orientations orientations) const
         -> AdjacentIndices
 {
-    const auto collect = [](const VerticesMap &vertices, qreal key1,
+    const auto collect = [](const VerticesMap &verticesMap, qreal key1,
                             qreal pos0) -> std::tuple<std::vector<int>, std::vector<int>> {
         // Determine the right/bottom line from the handle item, and collect tiles
         // within the handle span.
-        const auto line1 = vertices.find(key1);
-        if (line1 == vertices.begin() || line1 == vertices.end())
+        const auto line1 = verticesMap.find(key1);
+        if (line1 == verticesMap.begin() || line1 == verticesMap.end())
             return {};
         const auto v1s = line1->second.find(pos0);
         if (v1s == line1->second.end())
@@ -308,11 +308,11 @@ auto FlexTileLayouter::collectAdjacentTilesThrough(size_t index,
                                                    Qt::Orientations orientations) const
         -> AdjacentIndices
 {
-    const auto collect = [](const VerticesMap &vertices, qreal key1,
+    const auto collect = [](const VerticesMap &verticesMap, qreal key1,
                             qreal pos) -> std::tuple<std::vector<int>, std::vector<int>> {
         // Walk through the line to determine contiguous range including the source item.
-        const auto line1 = vertices.find(key1);
-        if (line1 == vertices.begin() || line1 == vertices.end())
+        const auto line1 = verticesMap.find(key1);
+        if (line1 == verticesMap.begin() || line1 == verticesMap.end())
             return {};
         qreal pos0 = 1.0, pos1 = 0.0;
         std::vector<int> tiles1;
@@ -510,12 +510,12 @@ void FlexTileLayouter::ensureVerticesMapBuilt()
     // Calculate relation of adjacent tiles (e.g. handle span) per axis.
     Q_ASSERT(tilesCollapsible_.empty());
     tilesCollapsible_.resize(tiles_.size(), false);
-    const auto calculateAdjacentRelation = [this](VerticesMap &vertices) {
-        if (vertices.empty())
+    const auto calculateAdjacentRelation = [this](VerticesMap &verticesMap) {
+        if (verticesMap.empty())
             return; // in case we allowed empty tiles.
         // First line should have no handle, so skipped updating handlePixelSize.
-        auto line0 = vertices.begin();
-        for (auto line1 = std::next(line0); line1 != vertices.end(); line0 = line1, ++line1) {
+        auto line0 = verticesMap.begin();
+        for (auto line1 = std::next(line0); line1 != verticesMap.end(); line0 = line1, ++line1) {
             auto v0s = line0->second.begin();
             auto v1s = line1->second.begin();
             Q_ASSERT(v0s != line0->second.end());
