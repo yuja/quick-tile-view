@@ -44,7 +44,17 @@ FlexTileLayouter::FlexTileLayouter()
     tiles_.push_back({ { 0.0, 0.0, 1.0, 1.0 }, {}, {}, {}, {}, {}, {} });
 }
 
-FlexTileLayouter::~FlexTileLayouter() = default;
+FlexTileLayouter::~FlexTileLayouter()
+{
+    // Delete child items immediately. This should be safe since the owner itself
+    // is an Item, which shouldn't be destroyed while its signal handling is
+    // in progress. See also ItemDeleter.
+    for (auto &tile : tiles_) {
+        delete tile.item.release();
+        delete tile.horizontalHandleItem.release();
+        delete tile.verticalHandleItem.release();
+    }
+}
 
 std::tuple<int, Qt::Orientations>
 FlexTileLayouter::findTileByHandleItem(const QQuickItem *item) const

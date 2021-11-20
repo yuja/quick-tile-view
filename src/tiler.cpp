@@ -33,7 +33,20 @@ Tiler::Tiler(QQuickItem *parent) : QQuickItem(parent)
     setFlag(ItemIsFocusScope);
 }
 
-Tiler::~Tiler() = default;
+Tiler::~Tiler()
+{
+    // Delete child items immediately. This should be safe since the owner itself
+    // is an Item, which shouldn't be destroyed while its signal handling is
+    // in progress. See also ItemDeleter.
+    for (auto &tile : tiles_) {
+        delete tile.item.release();
+    }
+    for (auto &split : splitMap_) {
+        for (auto &band : split.bands) {
+            delete band.handleItem.release();
+        }
+    }
+}
 
 TilerAttached *Tiler::qmlAttachedProperties(QObject *object)
 {
